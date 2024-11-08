@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - TA Management System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="{{ url_for('dashboard') }}">
+                <strong>TA Management System</strong>
+            </a>
+        </div>
+
+        <div class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <div class="buttons">
+                        <a href="{{ url_for('logout') }}" class="button is-light">
+                            <span class="icon">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </span>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="section">
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="notification {% if category == 'error' %}is-danger{% else %}is-success{% endif %}">
+                            <button class="delete"></button>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="columns is-centered">
+                <div class="column is-8">
+                    <div class="box">
+                        <h1 class="title">Welcome to Your Dashboard</h1>
+                        
+                        <div class="content">
+                            <div class="field">
+                                <label class="label">Name</label>
+                                <p class="is-size-5">{{ session.get('name') }}</p>
+                            </div>
+
+                            <div class="field">
+                                <label class="label">Email</label>
+                                <p class="is-size-5">{{ session.get('email') }}</p>
+                            </div>
+
+                            <div class="field">
+                                <label class="label">Role</label>
+                                <p class="is-size-5">
+                                    <span class="tag is-primary is-medium">
+                                        {{ session.get('role')|replace('_', ' ')|title }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Role-specific content can be added here -->
+                        {% if session.get('role') == 'instructor' %}
+                            <div class="notification is-info">
+                                <h2 class="subtitle">Instructor Dashboard</h2>
+                                <!-- Add instructor-specific content -->
+                            </div>
+                        {% elif session.get('role') == 'ta_applicant' %}
+                            <div class="notification is-info">
+                                <h2 class="subtitle">TA Applicant Dashboard</h2>
+                                <!-- Add TA applicant-specific content -->
+                            </div>
+                        {% elif session.get('role') == 'department_staff' %}
+                            <div class="notification is-info">
+                                <h2 class="subtitle">Department Staff Dashboard</h2>
+                                <!-- Add department staff-specific content -->
+                            </div>
+                        {% elif session.get('role') == 'committee_member' %}
+                            <div class="notification is-info">
+                                <h2 class="subtitle">TA Committee Member Dashboard</h2>
+                                <!-- Add committee member-specific content -->
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Delete button for notifications
+            (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
+                const $notification = $delete.parentNode;
+                $delete.addEventListener('click', () => {
+                    $notification.parentNode.removeChild($notification);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
