@@ -14,8 +14,7 @@ DEPARTMENTS = {
     'physics': 'Physics',
     'eng': 'Engineering',
     'bio': 'Biology',
-    'chem': 'Chemistry',
-    # Add more departments as needed
+    'chem': 'Chemistry'
 }
 
 @staff_bp.route('/dashboard')
@@ -45,15 +44,14 @@ def dashboard():
         course['assigned_tas'] = course_tas
         courses_needing_tas[course_id] = course
     
-    # Get departments for the course input form
-    departments = db.child("departments").get().val() or {}
+    # Get instructors for the course input form
     instructors = db.child("users").order_by_child("role").equal_to("instructor").get().val() or {}
     
     return render_template('staff/dashboard.html',
                          stats=stats,
                          recent_applications=recent_applications,
                          courses_needing_tas=courses_needing_tas,
-                         departments=departments,
+                         departments=DEPARTMENTS,  # Use hardcoded departments
                          instructors=instructors)
 
 @staff_bp.route('/courses', methods=['GET', 'POST'])
@@ -64,28 +62,18 @@ def manage_courses():
     
     if request.method == 'POST':
         try:
+            department_code = request.form['department']
             course_data = {
                 "course_code": request.form['course_code'],
                 "name": request.form['name'],
-                "department": request.form['department'],
-                "department_name": DEPARTMENTS[request.form['department']],  # Add department name
-                "semester": request.form['semester'],
-                "instructor_id": request.form['instructor_id'],
-                "description": request.form.get('description', ''),
+                "department": department_code,
+                "department_name": DEPARTMENTS[department_code],
+                "semester": request.form.get('semester', 'Fall 2024'),
                 "ta_requirements": {
                     "number_needed": int(request.form['number_needed']),
                     "hours_per_week": int(request.form['hours_per_week']),
-                    "required_skills": request.form.getlist('required_skills'),
-                    "preferred_skills": request.form.getlist('preferred_skills'),
-                    "min_gpa": float(request.form.get('min_gpa', 0)),
-                    "experience_required": request.form.get('experience_required', 'None')
-                },
-                "schedule": {
-                    "days": request.form.getlist('class_days'),
-                    "start_time": request.form.get('start_time'),
-                    "end_time": request.form.get('end_time'),
-                    "location": request.form.get('location'),
-                    "modality": request.form.get('modality', 'In-person')
+                    "required_skills": request.form.get('required_skills', '').split(','),
+                    "preferred_skills": request.form.get('preferred_skills', '').split(',')
                 },
                 "ta_assigned": False,
                 "created_by": session['user_id'],
@@ -102,7 +90,6 @@ def manage_courses():
     # Get all courses and related data
     courses = db.child("courses").get().val() or {}
     instructors = db.child("users").order_by_child("role").equal_to("instructor").get().val() or {}
-    departments = db.child("departments").get().val() or {}
     ta_assignments = db.child("ta_assignments").get().val() or {}
     
     # Add TA information to courses
@@ -177,10 +164,7 @@ def assign_ta_to_course(course_id):
     except Exception as e:
         flash(f'Error assigning TA: {str(e)}', 'error')
     
-    return redirect(url_for('staff.manage_courses'))
-
-# Keep your existing routes for applications, reviews, reports, and notifications...
-# [Previous code for review_application, ta_assignments, reports, and notifications remains the same]
+    return redirect(url_for('staff.dashboard'))
 
 @staff_bp.route('/course/<course_id>/recommend-tas')
 @login_required
@@ -238,8 +222,11 @@ def view_applications():
         applications = {k: v for k, v in applications.items() 
                       if v.get('department') == department_filter}
     
+    courses = db.child("courses").get().val() or {}
+    
     return render_template('staff/applications.html',
                          applications=applications,
+                         courses=courses,
                          departments=DEPARTMENTS,
                          current_status=status_filter,
                          current_department=department_filter)
