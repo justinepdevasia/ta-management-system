@@ -1,6 +1,7 @@
 from flask import Flask
 from config.config import Config
 from app.utils.firebase import initialize_firebase
+from app.utils.filters import format_datetime
 
 def create_app():
     app = Flask(__name__)
@@ -8,6 +9,8 @@ def create_app():
     
     # Initialize Firebase
     initialize_firebase(app)
+
+    app.jinja_env.filters['datetime'] = format_datetime
     
     # Register blueprints
     from app.routes.auth import auth_bp
