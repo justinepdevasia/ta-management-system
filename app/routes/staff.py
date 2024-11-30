@@ -230,3 +230,56 @@ def view_applications():
                          departments=DEPARTMENTS,
                          current_status=status_filter,
                          current_department=department_filter)
+
+@staff_bp.route('/application/<application_id>/review', methods=['GET', 'POST'])
+@login_required
+@role_required(['staff'])
+def review_application(application_id):
+    _, _, db, _ = get_firebase()
+    
+    if request.method == 'POST':
+        try:
+            recommendation = {
+                "reviewer_id": session['user_id'],
+                "recommended_courses": request.form.getlist('recommended_courses'),
+                "evaluation": {
+                    "academic_strength": int(request.form['academic_strength']),
+                    "teaching_potential": int(request.form['teaching_potential']),
+                    "technical_skills": int(request.form['technical_skills']),
+                    "communication": int(request.form['communication'])
+                },
+                "comments": request.form['comments'],
+                "overall_recommendation": request.form['overall_recommendation'],
+                "created_at": datetime.now().isoformat()
+            }
+            
+            # Add recommendation to application
+            db.child("applications").child(application_id).child("staff_review").set(recommendation)
+            
+            # Update application status
+            db.child("applications").child(application_id).update({
+                "status": "Reviewed",
+                "updated_at": datetime.now().isoformat()
+            })
+            
+            flash('Application review submitted successfully!', 'success')
+            return redirect(url_for('staff.view_applications'))
+            
+        except Exception as e:
+            flash(f'Error submitting review: {str(e)}', 'error')
+    
+    # Get application data
+    application = db.child("applications").child(application_id).get().val()
+    
+    if not application:
+        flash('Application not found.', 'error')
+        return redirect(url_for('staff.view_applications'))
+    
+    # Get related data
+    courses = db.child("courses").get().val() or {}
+    applicant = db.child("users").child(application['applicant_id']).get().val() or {}
+    
+    return render_template('staff/review_application.html',
+                         application=application,
+                         courses=courses,
+                         applicant=applicant)
