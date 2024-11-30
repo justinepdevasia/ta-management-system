@@ -1,7 +1,7 @@
 from flask import Flask
 from config.config import Config
 from app.utils.firebase import initialize_firebase
-from app.utils.filters import format_datetime
+from app.utils.filters import format_datetime, is_today, within_days
 
 def create_app():
     app = Flask(__name__)
@@ -11,6 +11,8 @@ def create_app():
     initialize_firebase(app)
 
     app.jinja_env.filters['datetime'] = format_datetime
+    app.jinja_env.tests['is_today'] = is_today
+    app.jinja_env.filters['within_days'] = within_days
     
     # Register blueprints
     from app.routes.auth import auth_bp
