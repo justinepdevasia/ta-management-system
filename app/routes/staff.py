@@ -170,12 +170,23 @@ def review_application(application_id):
 def manage_courses():
     _, _, db, _ = get_firebase()
     
+    # Define departments (since we're using a static list)
+    departments = {
+        'cs': {'id': 'cs', 'name': 'Computer Science'},
+        'math': {'id': 'math', 'name': 'Mathematics'},
+        'physics': {'id': 'physics', 'name': 'Physics'},
+        'eng': {'id': 'eng', 'name': 'Engineering'},
+        'bio': {'id': 'bio', 'name': 'Biology'},
+        'chem': {'id': 'chem', 'name': 'Chemistry'}
+    }
+    
     if request.method == 'POST':
         try:
             course_data = {
                 "course_code": request.form['course_code'],
                 "name": request.form['name'],
                 "department": request.form['department'],
+                "department_name": departments[request.form['department']]['name'],
                 "semester": request.form['semester'],
                 "instructor_id": request.form['instructor_id'],
                 "ta_requirements": {
@@ -196,16 +207,17 @@ def manage_courses():
         except Exception as e:
             flash(f'Error adding course: {str(e)}', 'error')
     
-    # Get all courses with department and instructor details
+    # Get all courses
     courses = db.child("courses").get().val() or {}
-    departments = db.child("departments").get().val() or {}
+    
+    # Get all instructors
     instructors = db.child("users").order_by_child("role").equal_to("instructor").get().val() or {}
     
     return render_template('staff/manage_courses.html',
                          courses=courses,
                          departments=departments,
                          instructors=instructors)
-
+                         
 @staff_bp.route('/course/<course_id>/edit', methods=['GET', 'POST'])
 @login_required
 @role_required(['staff'])
