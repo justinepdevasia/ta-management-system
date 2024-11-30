@@ -103,8 +103,8 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
                         <select name="department" required class="w-full rounded-md border-gray-300">
-                            {% for dept_id, dept in departments.items() %}
-                            <option value="{{ dept_id }}">{{ dept.name }}</option>
+                            {% for dept_code, dept_name in departments.items() %}
+                            <option value="{{ dept_code }}">{{ dept_name }}</option>
                             {% endfor %}
                         </select>
                     </div>
