@@ -170,7 +170,7 @@ def review_application(application_id):
 def manage_courses():
     _, _, db, _ = get_firebase()
     
-    # Define departments (since we're using a static list)
+    # Define departments
     departments = {
         'cs': {'id': 'cs', 'name': 'Computer Science'},
         'math': {'id': 'math', 'name': 'Mathematics'},
@@ -188,7 +188,6 @@ def manage_courses():
                 "department": request.form['department'],
                 "department_name": departments[request.form['department']]['name'],
                 "semester": request.form['semester'],
-                "instructor_id": request.form['instructor_id'],
                 "ta_requirements": {
                     "number_needed": int(request.form['number_needed']),
                     "hours_per_week": int(request.form['hours_per_week']),
@@ -210,14 +209,10 @@ def manage_courses():
     # Get all courses
     courses = db.child("courses").get().val() or {}
     
-    # Get all instructors
-    instructors = db.child("users").order_by_child("role").equal_to("instructor").get().val() or {}
-    
     return render_template('staff/manage_courses.html',
                          courses=courses,
-                         departments=departments,
-                         instructors=instructors)
-                         
+                         departments=departments)
+                                                  
 @staff_bp.route('/course/<course_id>/edit', methods=['GET', 'POST'])
 @login_required
 @role_required(['staff'])
