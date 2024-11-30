@@ -23,9 +23,9 @@
             <div class="p-6 border-b">
                 <h2 class="text-xl font-semibold mb-4">Selected Courses</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {% for course_id in application.qualified_courses %}
+                    {% for course_id in application.courses %}
                     <div class="p-3 bg-gray-50 rounded-lg">
-                        <h3 class="font-semibold">{{ courses[course_id].code }}</h3>
+                        <h3 class="font-semibold">{{ courses[course_id].course_code }}</h3>
                         <p class="text-gray-600">{{ courses[course_id].name }}</p>
                     </div>
                     {% endfor %}

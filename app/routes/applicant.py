@@ -45,7 +45,7 @@ def new_application():
     if request.method == 'POST':
         try:
             # Get form data
-            courses = request.form.getlist('qualified_courses')
+            courses = request.form.getlist('courses')
             previous_experience = request.form.get('previous_experience') == 'yes'
             prev_courses = request.form.getlist('previous_courses')
             prev_dates = request.form.getlist('previous_dates')
@@ -55,7 +55,7 @@ def new_application():
                 "applicant_id": session['user_id'],
                 "status": "Draft",
                 "submission_date": datetime.now().isoformat(),
-                "qualified_courses": courses,
+                "courses": courses,
                 "previous_experience": previous_experience,
                 "previous_courses": prev_courses if previous_experience else [],
                 "previous_dates": prev_dates if previous_experience else [],
@@ -144,7 +144,7 @@ def edit_application(application_id):
         try:
             # Update application data
             update_data = {
-                "qualified_courses": request.form.getlist('qualified_courses'),
+                "courses": request.form.getlist('courses'),
                 "previous_experience": request.form.get('previous_experience') == 'yes',
                 "gpa": request.form.get('gpa'),
                 "semester": request.form.get('semester'),
