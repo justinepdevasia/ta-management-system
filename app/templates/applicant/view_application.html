@@ -8,27 +8,36 @@
         <div class="mb-6 flex justify-between items-center">
             <h1 class="text-2xl font-bold">Application Details</h1>
             <span class="inline-flex px-3 py-1 text-sm font-semibold rounded-full
-                {% if application.status == 'Draft' %}bg-gray-200 text-gray-800
-                {% elif application.status == 'Submitted' %}bg-blue-200 text-blue-800
+                {% if application.status == 'Submitted' %}bg-blue-200 text-blue-800
+                {% elif application.status == 'Selected' %}bg-yellow-200 text-yellow-800
                 {% elif application.status == 'Accepted' %}bg-green-200 text-green-800
                 {% elif application.status == 'Rejected' %}bg-red-200 text-red-800
-                {% elif application.status == 'OfferSent' %}bg-purple-200 text-purple-800
                 {% endif %}">
                 {{ application.status }}
             </span>
         </div>
 
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-            <!-- Application Information -->
+            <!-- Course Information -->
             <div class="p-6 border-b">
-                <h2 class="text-xl font-semibold mb-4">Selected Courses</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {% for course_id in application.courses %}
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <h3 class="font-semibold">{{ courses[course_id].course_code }}</h3>
-                        <p class="text-gray-600">{{ courses[course_id].name }}</p>
+                <h2 class="text-xl font-semibold mb-4">Course Information</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Course Code</label>
+                        <p class="mt-1 text-gray-900">{{ course.course_code }}</p>
                     </div>
-                    {% endfor %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Course Name</label>
+                        <p class="mt-1 text-gray-900">{{ course.name }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Department</label>
+                        <p class="mt-1 text-gray-900">{{ course.department_name }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Semester</label>
+                        <p class="mt-1 text-gray-900">{{ course.semester }}</p>
+                    </div>
                 </div>
             </div>
 
@@ -50,16 +59,16 @@
             <!-- Educational Information -->
             <div class="p-6 border-b">
                 <h2 class="text-xl font-semibold mb-4">Educational Information</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <h3 class="font-semibold">Current GPA</h3>
-                        <p class="text-gray-600">{{ application.gpa }}</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">GPA</label>
+                        <p class="mt-1 text-gray-900">{{ application.gpa }}</p>
                     </div>
                     {% if application.cv_url %}
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <h3 class="font-semibold">CV</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">CV</label>
                         <a href="{{ application.cv_url }}" target="_blank" 
-                           class="text-blue-600 hover:text-blue-800 hover:underline">
+                           class="mt-1 inline-block text-blue-600 hover:text-blue-800">
                             View CV
                         </a>
                     </div>
@@ -67,23 +76,18 @@
                 </div>
             </div>
 
-            <!-- Research Interests -->
+            <!-- Additional Information -->
             {% if application.research_interests %}
             <div class="p-6 border-b">
                 <h2 class="text-xl font-semibold mb-4">Research Interests</h2>
-                <div class="p-3 bg-gray-50 rounded-lg">
-                    <p class="text-gray-700">{{ application.research_interests }}</p>
-                </div>
+                <p class="text-gray-700">{{ application.research_interests }}</p>
             </div>
             {% endif %}
 
-            <!-- Additional Skills -->
             {% if application.additional_skills %}
             <div class="p-6 border-b">
                 <h2 class="text-xl font-semibold mb-4">Additional Skills</h2>
-                <div class="p-3 bg-gray-50 rounded-lg">
-                    <p class="text-gray-700">{{ application.additional_skills }}</p>
-                </div>
+                <p class="text-gray-700">{{ application.additional_skills }}</p>
             </div>
             {% endif %}
 
@@ -100,40 +104,41 @@
                             </div>
                         </div>
                         <div class="ml-4">
-                            <h3 class="text-lg font-medium">Application Created</h3>
-                            <p class="text-gray-500">{{ application.created_at|datetime }}</p>
+                            <h3 class="text-lg font-medium">Application Submitted</h3>
+                            <p class="text-gray-500">{{ application.submission_date|datetime }}</p>
                         </div>
                     </div>
 
-                    {% if application.submission_date %}
+                    {% if application.status == 'Selected' %}
                     <div class="flex items-center">
                         <div class="flex-shrink-0">
-                            <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center">
+                            <div class="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center">
+                                <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium">Selected for Position</h3>
+                            <p class="text-gray-500">{{ application.selected_date|datetime }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if application.status in ['Accepted', 'Rejected'] %}
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="h-8 w-8 rounded-full 
+                                      {% if application.status == 'Accepted' %}bg-green-500{% else %}bg-red-500{% endif %} 
+                                      flex items-center justify-center">
                                 <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                 </svg>
                             </div>
                         </div>
                         <div class="ml-4">
-                            <h3 class="text-lg font-medium">Application Submitted</h3>
-                            <p class="text-gray-500">{{ application.submission_date|datetime }}</p>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if application.status == 'OfferSent' %}
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center">
-                                <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
-                                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="ml-4">
-                            <h3 class="text-lg font-medium">Offer Sent</h3>
-                            <p class="text-gray-500">{{ application.offer_date|datetime }}</p>
+                            <h3 class="text-lg font-medium">Offer {{ application.status }}</h3>
+                            <p class="text-gray-500">{{ application.response_date|datetime }}</p>
                         </div>
                     </div>
                     {% endif %}
@@ -142,21 +147,22 @@
 
             <!-- Action Buttons -->
             <div class="p-6 bg-gray-50 flex justify-end space-x-4">
-                {% if application.status == 'Draft' %}
-                <a href="{{ url_for('applicant.edit_application', application_id=application.id) }}"
-                   class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-                    Edit Application
-                </a>
-                {% endif %}
-                
-                {% if application.status == 'OfferSent' %}
-                <form method="POST" action="{{ url_for('applicant.handle_offer', offer_id=application.offer_id, action='accept') }}" class="inline">
-                    <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                {% if application.status == 'Selected' %}
+                <form method="POST" 
+                      action="{{ url_for('applicant.handle_offer', application_id=application.id, action='accept') }}" 
+                      class="inline">
+                    <button type="submit" 
+                            onclick="return confirm('Are you sure you want to accept this offer? This action cannot be undone.')"
+                            class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
                         Accept Offer
                     </button>
                 </form>
-                <form method="POST" action="{{ url_for('applicant.handle_offer', offer_id=application.offer_id, action='reject') }}" class="inline">
-                    <button type="submit" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">
+                <form method="POST" 
+                      action="{{ url_for('applicant.handle_offer', application_id=application.id, action='reject') }}" 
+                      class="inline">
+                    <button type="submit"
+                            onclick="return confirm('Are you sure you want to reject this offer? This action cannot be undone.')"
+                            class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">
                         Decline Offer
                     </button>
                 </form>
@@ -166,6 +172,92 @@
                    class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
                     Back to Dashboard
                 </a>
+            </div>
+        </div>
+
+        <!-- Staff Comments (if any) -->
+        {% if application.staff_review %}
+        <div class="mt-8 bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold mb-4">Staff Review</h2>
+                <div class="space-y-4">
+                    {% if application.staff_review.comments %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Comments</label>
+                        <p class="text-gray-700">{{ application.staff_review.comments }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if application.staff_review.feedback %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Feedback</label>
+                        <p class="text-gray-700">{{ application.staff_review.feedback }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Application Status History -->
+        {% if application.status_history %}
+        <div class="mt-8 bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold mb-4">Status History</h2>
+                <div class="space-y-4">
+                    {% for history in application.status_history %}
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center">
+                                <span class="text-white text-sm">{{ loop.index }}</span>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-900">
+                                Status changed to: {{ history.status }}
+                            </p>
+                            <p class="text-sm text-gray-500">
+                                {{ history.date|datetime }}
+                            </p>
+                            {% if history.note %}
+                            <p class="text-sm text-gray-600 mt-1">
+                                {{ history.note }}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Important Dates -->
+        <div class="mt-8 bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold mb-4">Important Dates</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700">Submission Date</label>
+                        <p class="mt-1 text-gray-900">{{ application.submission_date|datetime }}</p>
+                    </div>
+                    {% if application.status == 'Selected' %}
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700">Response Due Date</label>
+                        <p class="mt-1 text-gray-900">{{ application.response_due_date|datetime }}</p>
+                    </div>
+                    {% endif %}
+                    {% if application.status == 'Accepted' %}
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700">Start Date</label>
+                        <p class="mt-1 text-gray-900">{{ course.start_date|datetime }}</p>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700">End Date</label>
+                        <p class="mt-1 text-gray-900">{{ course.end_date|datetime }}</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

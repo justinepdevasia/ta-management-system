@@ -1,6 +1,4 @@
-{% extends "base.html" %}
-
-{% block title %}New Application{% endblock %}
+{# templates/applicant/new_application.html continued #}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
@@ -11,19 +9,16 @@
             <!-- Course Selection -->
             <div class="mb-6">
                 <label class="block text-gray-700 text-sm font-bold mb-2">
-                    Select Courses You're Qualified to TA
+                    Select Course to Apply For
                 </label>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {% for course in courses.values() %}
-                    <div class="flex items-center">
-                        <input type="checkbox" name="qualified_courses" value="{{ course.id }}"
-                               class="form-checkbox h-4 w-4 text-blue-600">
-                        <label class="ml-2">
-                            {{ course.code }} - {{ course.name }}
-                        </label>
-                    </div>
+                <select name="course_id" required class="w-full px-3 py-2 border rounded-lg">
+                    <option value="">Select a course...</option>
+                    {% for course_id, course in courses.items() %}
+                    <option value="{{ course_id }}">
+                        {{ course.course_code }} - {{ course.name }}
+                    </option>
                     {% endfor %}
-                </div>
+                </select>
             </div>
 
             <!-- Previous Experience -->
@@ -54,12 +49,12 @@
                             <div>
                                 <label class="block text-gray-700 text-sm font-bold mb-2">Course</label>
                                 <input type="text" name="previous_courses[]" 
-                                       class="form-input mt-1 block w-full rounded-md border-gray-300">
+                                       class="w-full px-3 py-2 border rounded-lg">
                             </div>
                             <div>
                                 <label class="block text-gray-700 text-sm font-bold mb-2">Semester/Year</label>
                                 <input type="text" name="previous_dates[]"
-                                       class="form-input mt-1 block w-full rounded-md border-gray-300">
+                                       class="w-full px-3 py-2 border rounded-lg">
                             </div>
                         </div>
                     </div>
@@ -76,7 +71,7 @@
                     Current GPA
                 </label>
                 <input type="number" step="0.01" min="0" max="4.0" name="gpa" required
-                       class="form-input mt-1 block w-full rounded-md border-gray-300">
+                       class="w-full px-3 py-2 border rounded-lg">
             </div>
 
             <!-- CV Upload -->
@@ -85,7 +80,7 @@
                     Upload CV (PDF only)
                 </label>
                 <input type="file" name="cv" accept=".pdf" required
-                       class="form-input mt-1 block w-full">
+                       class="w-full px-3 py-2 border rounded-lg">
             </div>
 
             <!-- Additional Information -->
@@ -94,7 +89,7 @@
                     Research Interests
                 </label>
                 <textarea name="research_interests" rows="3"
-                          class="form-textarea mt-1 block w-full rounded-md border-gray-300"
+                          class="w-full px-3 py-2 border rounded-lg"
                           placeholder="Describe your research interests..."></textarea>
             </div>
 
@@ -103,17 +98,17 @@
                     Additional Skills
                 </label>
                 <textarea name="additional_skills" rows="3"
-                          class="form-textarea mt-1 block w-full rounded-md border-gray-300"
+                          class="w-full px-3 py-2 border rounded-lg"
                           placeholder="List any relevant technical skills, programming languages, etc..."></textarea>
             </div>
 
             <!-- Submit Buttons -->
             <div class="flex justify-end space-x-4">
-                <button type="submit" name="action" value="draft"
-                        class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
-                    Save as Draft
-                </button>
-                <button type="submit" name="action" value="submit"
+                <a href="{{ url_for('applicant.dashboard') }}"
+                   class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                    Cancel
+                </a>
+                <button type="submit"
                         class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
                     Submit Application
                 </button>
@@ -136,12 +131,12 @@ function addExperienceField() {
         <div>
             <label class="block text-gray-700 text-sm font-bold mb-2">Course</label>
             <input type="text" name="previous_courses[]" 
-                   class="form-input mt-1 block w-full rounded-md border-gray-300">
+                   class="w-full px-3 py-2 border rounded-lg">
         </div>
         <div>
             <label class="block text-gray-700 text-sm font-bold mb-2">Semester/Year</label>
             <input type="text" name="previous_dates[]"
-                   class="form-input mt-1 block w-full rounded-md border-gray-300">
+                   class="w-full px-3 py-2 border rounded-lg">
         </div>
     `;
     container.appendChild(newFields);
