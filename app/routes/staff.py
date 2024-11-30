@@ -8,6 +8,16 @@ import uuid
 
 staff_bp = Blueprint('staff', __name__, url_prefix='/staff')
 
+DEPARTMENTS = {
+    'cs': 'Computer Science',
+    'math': 'Mathematics',
+    'physics': 'Physics',
+    'eng': 'Engineering',
+    'bio': 'Biology',
+    'chem': 'Chemistry',
+    # Add more departments as needed
+}
+
 @staff_bp.route('/dashboard')
 @login_required
 @role_required(['staff'])
@@ -58,6 +68,7 @@ def manage_courses():
                 "course_code": request.form['course_code'],
                 "name": request.form['name'],
                 "department": request.form['department'],
+                "department_name": DEPARTMENTS[request.form['department']],  # Add department name
                 "semester": request.form['semester'],
                 "instructor_id": request.form['instructor_id'],
                 "description": request.form.get('description', ''),
@@ -102,7 +113,7 @@ def manage_courses():
     return render_template('staff/manage_courses.html',
                          courses=courses,
                          instructors=instructors,
-                         departments=departments)
+                         departments=DEPARTMENTS)
 
 @staff_bp.route('/course/<course_id>/tas')
 @login_required
@@ -211,3 +222,24 @@ def recommend_tas(course_id):
     return render_template('staff/recommend_tas.html',
                          course=course,
                          recommendations=recommended_tas)
+
+@staff_bp.route('/applications')
+@login_required
+@role_required(['staff'])
+def view_applications():
+    _, _, db, _ = get_firebase()
+    
+    status_filter = request.args.get('status', 'Submitted')
+    department_filter = request.args.get('department', None)
+    
+    applications = db.child("applications").order_by_child("status").equal_to(status_filter).get().val() or {}
+    
+    if department_filter:
+        applications = {k: v for k, v in applications.items() 
+                      if v.get('department') == department_filter}
+    
+    return render_template('staff/applications.html',
+                         applications=applications,
+                         departments=DEPARTMENTS,
+                         current_status=status_filter,
+                         current_department=department_filter)

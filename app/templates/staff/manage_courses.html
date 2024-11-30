@@ -22,12 +22,12 @@
                         <input type="text" name="name" required
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     </div>
-                    <div>
+                    <div class="form-group">
                         <label class="block text-sm font-medium text-gray-700">Department</label>
                         <select name="department" required
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            {% for dept_id, dept in departments.items() %}
-                            <option value="{{ dept_id }}">{{ dept.name }}</option>
+                                class="mt-1 block w-full rounded-md border-gray-300">
+                            {% for dept_code, dept_name in departments.items() %}
+                            <option value="{{ dept_code }}">{{ dept_name }}</option>
                             {% endfor %}
                         </select>
                     </div>
