@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Committee Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">Committee Dashboard</h1>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-600 mb-2">Pending Reviews</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ stats.pending_review }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-600 mb-2">Decisions Made</h3>
+            <p class="text-3xl font-bold text-green-600">{{ stats.decisions_made }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-600 mb-2">Total Applications</h3>
+            <p class="text-3xl font-bold text-gray-600">{{ stats.total_applications }}</p>
+        </div>
+    </div>
+
+    <!-- Recent Applications -->
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-xl font-semibold">Recent Applications for Review</h2>
+        </div>
+        <div class="p-6">
+            {% if recent_applications %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Submission Date
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Applicant
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for app_id, app in recent_applications.items() %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ app.submission_date|datetime }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ app.applicant_name }}</div>
+                                <div class="text-sm text-gray-500">{{ app.applicant_email }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {{ app.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <a href="{{ url_for('committee.review_application', application_id=app_id) }}" 
+                                   class="text-blue-600 hover:text-blue-900">Review</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-center py-4">No applications pending review.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
+            <div class="space-y-4">
+                <a href="{{ url_for('committee.view_applications') }}" 
+                   class="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    View All Applications
+                </a>
+                <a href="{{ url_for('committee.meetings') }}" 
+                   class="block w-full text-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                    Committee Meetings
+                </a>
+                <a href="{{ url_for('committee.reports') }}" 
+                   class="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                    View Reports
+                </a>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Recent Activity</h3>
+            <div class="space-y-2">
+                <p class="text-gray-500 italic text-center py-4">Recent activity will appear here.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
