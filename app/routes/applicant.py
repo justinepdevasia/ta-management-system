@@ -33,8 +33,8 @@ def dashboard():
             formatted_applications.append(app_data)
     
     return render_template('applicant/dashboard.html',
-                         applications=formatted_applications,
-                         available_courses=available_courses)
+                     applications=formatted_applications,
+                     available_courses=available_courses)
 
 @applicant_bp.route('/application/new', methods=['GET', 'POST'])
 @login_required

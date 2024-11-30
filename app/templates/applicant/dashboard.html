@@ -62,9 +62,11 @@
                         </td>
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                             {% for course in app.qualified_courses %}
+                                {% if available_courses.get(course) %}
                                 <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2">
-                                    {{ courses[course].name }}
+                                    {{ available_courses[course].name }}
                                 </span>
+                                {% endif %}
                             {% endfor %}
                         </td>
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
@@ -79,10 +81,10 @@
                             </span>
                         </td>
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            <a href="{{ url_for('applicant.view_application', application_id=app.id) }}" 
+                            <a href="{{ url_for('applicant.view_application', application_id=app.get('id', '')) }}" 
                                class="text-blue-600 hover:text-blue-900">View</a>
                             {% if app.status == 'Draft' %}
-                            | <a href="{{ url_for('applicant.edit_application', application_id=app.id) }}"
+                            | <a href="{{ url_for('applicant.edit_application', application_id=app.get('id', '')) }}"
                                  class="text-green-600 hover:text-green-900">Edit</a>
                             {% endif %}
                         </td>
