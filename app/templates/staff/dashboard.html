@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Summary Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-semibold text-gray-600">Total Applications</h3>
+            <p class="text-2xl font-bold">{{ stats.total_applications }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-semibold text-gray-600">Pending Review</h3>
+            <p class="text-2xl font-bold">{{ stats.pending_review }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-semibold text-gray-600">Courses Needing TAs</h3>
+            <p class="text-2xl font-bold">{{ stats.courses_needing_tas }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-semibold text-gray-600">Active TAs</h3>
+            <p class="text-2xl font-bold">{{ stats.active_tas }}</p>
+        </div>
+    </div>
+
+    <!-- Recent Applications -->
+    <div class="mb-8">
+        <h2 class="text-xl font-bold mb-4">Recent Applications</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                        </th>
+                        <th class="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            Applicant
+                        </th>
+                        <th class="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            Action
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app_id, app in recent_applications.items() %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            {{ app.submission_date|datetime }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            {{ app.applicant_name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if app.status == 'Submitted' %}bg-yellow-100 text-yellow-800
+                                {% elif app.status == 'Reviewed' %}bg-blue-100 text-blue-800
+                                {% elif app.status == 'Accepted' %}bg-green-100 text-green-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ app.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            <a href="{{ url_for('staff.review_application', application_id=app_id) }}" 
+                               class="text-indigo-600 hover:text-indigo-900">Review</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Courses Needing TAs -->
+    <div class="mb-8">
+        <h2 class="text-xl font-bold mb-4">Courses Needing TAs</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            Course Code
+                        </th>
+                        <th class="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            Course Name
+                        </th>
+                        <th class="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            Department
+                        </th>
+                        <th class="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            TAs Needed
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course_id, course in courses_needing_tas.items() %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            {{ course.course_code }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            {{ course.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            {{ course.department }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
+                            {{ course.ta_requirements.number_needed }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

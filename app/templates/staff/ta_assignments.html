@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}TA Assignments{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold mb-6">Manage TA Assignments</h1>
+
+        <!-- Assignment Management -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Create New Assignment</h2>
+            <form method="POST" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Course</label>
+                        <select name="course_id" required class="mt-1 block w-full rounded-md border-gray-300">
+                            {% for course_id, course in courses.items() %}
+                            <option value="{{ course_id }}">{{ course.code }} - {{ course.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">TA</label>
+                        <select name="ta_id" required class="mt-1 block w-full rounded-md border-gray-300">
+                            {% for ta_id, ta in tas.items() %}
+                            <option value="{{ ta_id }}">{{ ta.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        Create Assignment
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Current Assignments -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-xl font-semibold">Current Assignments</h2>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                            Course
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                            TA
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                            Status
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                            Assigned Date
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for assignment_id, assignment in assignments.items() %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {{ courses[assignment.course_id].code }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {{ tas[assignment.ta_id].name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                {% if assignment.status == 'Active' %}bg-green-100 text-green-800
+                                {% elif assignment.status == 'Pending' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ assignment.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {{ assignment.assigned_at|datetime }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="toggleAssignmentStatus('{{ assignment_id }}')"
+                                    class="text-blue-600 hover:text-blue-900 mr-4">
+                                Toggle Status
+                            </button>
+                            <button onclick="removeAssignment('{{ assignment_id }}')"
+                                    class="text-red-600 hover:text-red-900">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAssignmentStatus(assignmentId) {
+    if (confirm('Are you sure you want to change this assignment\'s status?')) {
+        fetch('/staff/api/assignment-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ assignment_id: assignmentId })
+        }).then(() => window.location.reload());
+    }
+}
+
+function removeAssignment(assignmentId) {
+    if (confirm('Are you sure you want to remove this assignment?')) {
+        fetch('/staff/api/remove-assignment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ assignment_id: assignmentId })
+        }).then(() => window.location.reload());
+    }
+}
+</script>
+{% endblock %}

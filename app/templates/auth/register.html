@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
+    <h2 class="text-2xl font-bold mb-6 text-center">Register</h2>
+    <form method="POST" action="{{ url_for('auth.register') }}">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="mb-4">
+                <label for="name" class="block text-gray-700 font-bold mb-2">Full Name</label>
+                <input type="text" id="name" name="name" required
+                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="email" class="block text-gray-700 font-bold mb-2">FAU Email</label>
+                <input type="email" id="email" name="email" required
+                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="username@fau.edu">
+            </div>
+            <div class="mb-4">
+                <label for="password" class="block text-gray-700 font-bold mb-2">Password</label>
+                <input type="password" id="password" name="password" required
+                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="confirm_password" class="block text-gray-700 font-bold mb-2">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required
+                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="role" class="block text-gray-700 font-bold mb-2">Role</label>
+                <select id="role" name="role" required
+                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                    <option value="">Select a role</option>
+                    <option value="applicant">TA Applicant</option>
+                    <option value="staff">Department Staff</option>
+                    <option value="committee">TA Committee Member</option>
+                    <option value="instructor">Instructor</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Dynamic fields based on role -->
+        <div id="applicant-fields" class="hidden role-fields">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label for="degree_program" class="block text-gray-700 font-bold mb-2">Degree Program</label>
+                    <select name="degree_program" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="masters">Master's</option>
+                        <option value="phd">Ph.D.</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="graduation_year" class="block text-gray-700 font-bold mb-2">Expected Graduation Year</label>
+                    <input type="number" name="graduation_year" min="2024" max="2030"
+                        class="w-full px-3 py-2 border rounded-lg">
+                </div>
+            </div>
+        </div>
+
+        <div id="instructor-fields" class="hidden role-fields">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label for="department" class="block text-gray-700 font-bold mb-2">Department</label>
+                    <select name="department" class="w-full px-3 py-2 border rounded-lg">
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}">{{ dept.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="office" class="block text-gray-700 font-bold mb-2">Office Location</label>
+                    <input type="text" name="office" class="w-full px-3 py-2 border rounded-lg">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit"
+            class="w-full bg-blue-900 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition duration-200">
+            Register
+        </button>
+    </form>
+    <div class="mt-4 text-center">
+        <p>Already have an account? <a href="{{ url_for('auth.login') }}" class="text-blue-600 hover:text-blue-800">Login here</a></p>
+    </div>
+</div>
+
+<script>
+document.getElementById('role').addEventListener('change', function() {
+    // Hide all role-specific fields
+    document.querySelectorAll('.role-fields').forEach(el => el.classList.add('hidden'));
+    
+    // Show fields for selected role
+    const selectedRole = this.value;
+    const roleFields = document.getElementById(selectedRole + '-fields');
+    if (roleFields) {
+        roleFields.classList.remove('hidden');
+    }
+});
+</script>
+{% endblock %}

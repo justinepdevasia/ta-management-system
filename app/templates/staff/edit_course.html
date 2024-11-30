@@ -1,0 +1,222 @@
+{# templates/staff/edit_course.html #}
+{% extends "base.html" %}
+
+{% block title %}Edit Course{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="mb-6 flex items-center justify-between">
+            <h1 class="text-2xl font-bold">Edit Course</h1>
+            <a href="{{ url_for('staff.manage_courses') }}" 
+               class="text-blue-600 hover:text-blue-800">← Back to Courses</a>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <form method="POST" class="space-y-6">
+                <!-- Basic Course Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Course Code
+                        </label>
+                        <input type="text" name="course_code" value="{{ course.course_code }}" required
+                               class="w-full rounded-md border-gray-300"
+                               placeholder="e.g., CS101">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Course Name
+                        </label>
+                        <input type="text" name="name" value="{{ course.name }}" required
+                               class="w-full rounded-md border-gray-300"
+                               placeholder="e.g., Introduction to Computer Science">
+                    </div>
+                </div>
+
+                <!-- Department and Semester -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Department
+                        </label>
+                        <select name="department" required class="w-full rounded-md border-gray-300">
+                            {% for dept_id, dept in departments.items() %}
+                            <option value="{{ dept_id }}" 
+                                    {% if course.department == dept_id %}selected{% endif %}>
+                                {{ dept.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Semester
+                        </label>
+                        <select name="semester" required class="w-full rounded-md border-gray-300">
+                            <option value="Fall 2024" {% if course.semester == 'Fall 2024' %}selected{% endif %}>
+                                Fall 2024
+                            </option>
+                            <option value="Spring 2025" {% if course.semester == 'Spring 2025' %}selected{% endif %}>
+                                Spring 2025
+                            </option>
+                            <option value="Summer 2025" {% if course.semester == 'Summer 2025' %}selected{% endif %}>
+                                Summer 2025
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Instructor Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Instructor
+                        </label>
+                        <select name="instructor_id" required class="w-full rounded-md border-gray-300">
+                            {% for instructor_id, instructor in instructors.items() %}
+                            <option value="{{ instructor_id }}"
+                                    {% if course.instructor_id == instructor_id %}selected{% endif %}>
+                                {{ instructor.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Hours Per Week
+                        </label>
+                        <input type="number" name="hours_per_week" 
+                               value="{{ course.ta_requirements.hours_per_week }}"
+                               min="1" max="20" required
+                               class="w-full rounded-md border-gray-300">
+                    </div>
+                </div>
+
+                <!-- TA Requirements -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Number of TAs Needed
+                        </label>
+                        <input type="number" name="number_needed" 
+                               value="{{ course.ta_requirements.number_needed }}"
+                               min="1" required
+                               class="w-full rounded-md border-gray-300">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Required Skills
+                        </label>
+                        <textarea name="required_skills" rows="3"
+                                  class="w-full rounded-md border-gray-300"
+                                  placeholder="Enter required skills, separated by commas">{{ course.ta_requirements.required_skills|join(', ') }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Preferred Skills
+                        </label>
+                        <textarea name="preferred_skills" rows="3"
+                                  class="w-full rounded-md border-gray-300"
+                                  placeholder="Enter preferred skills, separated by commas">{{ course.ta_requirements.preferred_skills|join(', ') }}</textarea>
+                    </div>
+                </div>
+
+                <!-- Course Description -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Course Description
+                    </label>
+                    <textarea name="description" rows="4"
+                              class="w-full rounded-md border-gray-300"
+                              placeholder="Enter course description...">{{ course.description }}</textarea>
+                </div>
+
+                <!-- Schedule Information -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-medium text-gray-900">Schedule Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Class Days
+                            </label>
+                            <div class="space-y-2">
+                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="class_days" value="{{ day }}"
+                                           {% if day in course.schedule.days %}checked{% endif %}
+                                           class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                                    <span class="ml-2 text-sm text-gray-700">{{ day }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Start Time
+                                </label>
+                                <input type="time" name="start_time" 
+                                       value="{{ course.schedule.start_time }}"
+                                       class="w-full rounded-md border-gray-300">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    End Time
+                                </label>
+                                <input type="time" name="end_time" 
+                                       value="{{ course.schedule.end_time }}"
+                                       class="w-full rounded-md border-gray-300">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="button" 
+                            onclick="window.location.href='{{ url_for('staff.manage_courses') }}'"
+                            class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if course.ta_assignments %}
+        <!-- Current TA Assignments -->
+        <div class="mt-8 bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b">
+                <h2 class="text-xl font-semibold">Current TA Assignments</h2>
+            </div>
+            <div class="p-6">
+                <div class="divide-y divide-gray-200">
+                    {% for assignment in course.ta_assignments %}
+                    <div class="py-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-medium">{{ assignment.ta_name }}</h3>
+                                <p class="text-sm text-gray-500">Assigned: {{ assignment.assigned_date|datetime }}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full 
+                                {% if assignment.status == 'Active' %}bg-green-100 text-green-800
+                                {% elif assignment.status == 'Pending' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ assignment.status }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

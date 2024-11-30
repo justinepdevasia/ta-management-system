@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Review Application{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold">Review Application</h1>
+            <p class="text-gray-600">Submitted on {{ application.submission_date|datetime }}</p>
+        </div>
+
+        <!-- Applicant Information -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+            <div class="p-6 border-b">
+                <h2 class="text-xl font-semibold mb-4">Applicant Information</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Name</label>
+                        <p class="mt-1 text-gray-900">{{ applicant.name }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Email</label>
+                        <p class="mt-1 text-gray-900">{{ applicant.email }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">GPA</label>
+                        <p class="mt-1 text-gray-900">{{ application.gpa }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">CV</label>
+                        <p class="mt-1">
+                            <a href="{{ application.cv_url }}" target="_blank" 
+                               class="text-blue-600 hover:text-blue-800">View CV</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected Courses -->
+            <div class="p-6 border-b">
+                <h2 class="text-xl font-semibold mb-4">Selected Courses</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for course_id in application.qualified_courses %}
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <h3 class="font-semibold">{{ courses[course_id].code }}</h3>
+                        <p class="text-gray-600">{{ courses[course_id].name }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Previous Experience -->
+            {% if application.previous_experience %}
+            <div class="p-6 border-b">
+                <h2 class="text-xl font-semibold mb-4">Previous TA Experience</h2>
+                <div class="space-y-4">
+                    {% for i in range(application.previous_courses|length) %}
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="font-semibold">{{ application.previous_courses[i] }}</p>
+                        <p class="text-gray-600">{{ application.previous_dates[i] }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Additional Information -->
+            <div class="p-6">
+                <h2 class="text-xl font-semibold mb-4">Additional Information</h2>
+                <div class="space-y-4">
+                    {% if application.research_interests %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Research Interests</label>
+                        <p class="text-gray-900">{{ application.research_interests }}</p>
+                    </div>
+                    {% endif %}
+                    {% if application.additional_skills %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Additional Skills</label>
+                        <p class="text-gray-900">{{ application.additional_skills }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Review Form -->
+        <form method="POST" class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold mb-4">Staff Review</h2>
+                
+                <!-- Evaluation Criteria -->
+                <div class="space-y-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Academic Strength</label>
+                        <select name="academic_strength" required 
+                                class="w-full rounded-md border-gray-300">
+                            {% for i in range(1, 6) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Teaching Potential</label>
+                        <select name="teaching_potential" required 
+                                class="w-full rounded-md border-gray-300">
+                            {% for i in range(1, 6) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Technical Skills</label>
+                        <select name="technical_skills" required 
+                                class="w-full rounded-md border-gray-300">
+                            {% for i in range(1, 6) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Communication</label>
+                        <select name="communication" required 
+                                class="w-full rounded-md border-gray-300">
+                            {% for i in range(1, 6) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Recommended Courses -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Recommended Courses</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for course_id, course in courses.items() %}
+                        <div class="flex items-center">
+                            <input type="checkbox" name="recommended_courses" value="{{ course_id }}"
+                                   class="form-checkbox h-4 w-4 text-blue-600">
+                            <label class="ml-2">
+                                {{ course.code }} - {{ course.name }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Comments -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Comments</label>
+                    <textarea name="comments" rows="4" required
+                              class="w-full rounded-md border-gray-300"
+                              placeholder="Enter your review comments..."></textarea>
+                </div>
+
+                <!-- Overall Recommendation -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Overall Recommendation</label>
+                    <select name="overall_recommendation" required 
+                            class="w-full rounded-md border-gray-300">
+                        <option value="highly_recommended">Highly Recommended</option>
+                        <option value="recommended">Recommended</option>
+                        <option value="recommended_with_reservations">Recommended with Reservations</option>
+                        <option value="not_recommended">Not Recommended</option>
+                    </select>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="flex justify-end space-x-4">
+                    <a href="{{ url_for('staff.view_applications') }}"
+                       class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                        Cancel
+                    </a>
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        Submit Review
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

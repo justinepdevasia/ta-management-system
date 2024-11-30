@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Reports{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-8">TA Program Reports</h1>
+
+    <!-- Summary Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Applications Statistics -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-lg font-semibold mb-4">Application Statistics</h2>
+            <div class="space-y-4">
+                {% for status, count in stats.applications_by_status.items() %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">{{ status }}</span>
+                    <span class="font-semibold">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Department Statistics -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-lg font-semibold mb-4">Department Statistics</h2>
+            <div class="space-y-4">
+                {% for dept, counts in stats.applications_by_department.items() %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">{{ dept }}</span>
+                    <span class="font-semibold">{{ counts }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Course Statistics -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-lg font-semibold mb-4">Course Statistics</h2>
+            <div class="space-y-4">
+                {% for dept, count in stats.courses_by_department.items() %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">{{ dept }}</span>
+                    <span class="font-semibold">{{ count }} courses</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Reports -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Application Trends -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-lg font-semibold mb-4">Application Trends</h2>
+            <canvas id="applicationTrendsChart" width="400" height="300"></canvas>
+        </div>
+
+        <!-- TA Distribution -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-lg font-semibold mb-4">TA Distribution by Department</h2>
+            <canvas id="taDistributionChart" width="400" height="300"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Application Trends Chart
+const trendsCtx = document.getElementById('applicationTrendsChart').getContext('2d');
+new Chart(trendsCtx, {
+    type: 'line',
+    data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [{
+            label: 'Applications',
+            data: [12, 19, 3, 5, 2, 3],
+            borderColor: 'rgb(59, 130, 246)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+
+// TA Distribution Chart
+const distributionCtx = document.getElementById('taDistributionChart').getContext('2d');
+new Chart(distributionCtx, {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys({{ stats.applications_by_department|tojson }}),
+        datasets: [{
+            data: Object.values({{ stats.applications_by_department|tojson }}),
+            backgroundColor: [
+                'rgb(59, 130, 246)',
+                'rgb(16, 185, 129)',
+                'rgb(239, 68, 68)',
+                'rgb(245, 158, 11)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Applicant Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold mb-4">Your Applications</h1>
+        
+        <!-- Application Status Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-semibold text-gray-600">Total Applications</h3>
+                <p class="text-2xl font-bold">{{ applications|length }}</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-semibold text-gray-600">Pending Review</h3>
+                <p class="text-2xl font-bold">{{ applications|selectattr('status', 'equalto', 'Submitted')|list|length }}</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-semibold text-gray-600">Accepted</h3>
+                <p class="text-2xl font-bold">{{ applications|selectattr('status', 'equalto', 'Accepted')|list|length }}</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-semibold text-gray-600">Offers Received</h3>
+                <p class="text-2xl font-bold">{{ applications|selectattr('status', 'equalto', 'OfferSent')|list|length }}</p>
+            </div>
+        </div>
+
+        <!-- New Application Button -->
+        <div class="mb-6">
+            <a href="{{ url_for('applicant.new_application') }}" 
+               class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+                Start New Application
+            </a>
+        </div>
+
+        <!-- Applications List -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Submission Date
+                        </th>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Courses
+                        </th>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Status
+                        </th>
+                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            {{ app.submission_date|datetime }}
+                        </td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            {% for course in app.qualified_courses %}
+                                <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2">
+                                    {{ courses[course].name }}
+                                </span>
+                            {% endfor %}
+                        </td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            <span class="inline-flex px-2 py-1 leading-none text-xs font-semibold rounded-full
+                                {% if app.status == 'Draft' %}bg-gray-200 text-gray-800
+                                {% elif app.status == 'Submitted' %}bg-blue-200 text-blue-800
+                                {% elif app.status == 'Accepted' %}bg-green-200 text-green-800
+                                {% elif app.status == 'Rejected' %}bg-red-200 text-red-800
+                                {% elif app.status == 'OfferSent' %}bg-purple-200 text-purple-800
+                                {% endif %}">
+                                {{ app.status }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            <a href="{{ url_for('applicant.view_application', application_id=app.id) }}" 
+                               class="text-blue-600 hover:text-blue-900">View</a>
+                            {% if app.status == 'Draft' %}
+                            | <a href="{{ url_for('applicant.edit_application', application_id=app.id) }}"
+                                 class="text-green-600 hover:text-green-900">Edit</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
+                            No applications found. Start a new application today!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Courses{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold mb-4">Manage Courses</h1>
+        
+        <!-- Add New Course Form -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">Add New Course</h2>
+            <form method="POST" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Course Code</label>
+                        <input type="text" name="course_code" required
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Course Name</label>
+                        <input type="text" name="name" required
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Department</label>
+                        <select name="department" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            {% for dept_id, dept in departments.items() %}
+                            <option value="{{ dept_id }}">{{ dept.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Semester</label>
+                        <select name="semester" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="Fall 2024">Fall 2024</option>
+                            <option value="Spring 2025">Spring 2025</option>
+                            <option value="Summer 2025">Summer 2025</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Instructor</label>
+                        <select name="instructor_id" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            {% for instructor_id, instructor in instructors.items() %}
+                            <option value="{{ instructor_id }}">{{ instructor.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Number of TAs Needed</label>
+                        <input type="number" name="number_needed" min="1" required
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Hours Per Week</label>
+                    <input type="number" name="hours_per_week" min="1" max="20" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Required Skills</label>
+                    <textarea name="required_skills" rows="3"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                              placeholder="Enter required skills, separated by commas"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Preferred Skills</label>
+                    <textarea name="preferred_skills" rows="3"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                              placeholder="Enter preferred skills, separated by commas"></textarea>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        Add Course
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Existing Courses Table -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <h2 class="text-xl font-bold p-6 bg-gray-50 border-b">Existing Courses</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Course Code
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Name
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Department
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Instructor
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                TAs Needed
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for course_id, course in courses.items() %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ course.course_code }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ course.name }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ departments[course.department].name }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ instructors[course.instructor_id].name }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ course.ta_requirements.number_needed }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <a href="{{ url_for('staff.edit_course', course_id=course_id) }}" 
+                                   class="text-blue-600 hover:text-blue-900 mr-4">Edit</a>
+                                <form method="POST" action="{{ url_for('staff.delete_course', course_id=course_id) }}" 
+                                      class="inline">
+                                    <button type="submit" class="text-red-600 hover:text-red-900"
+                                            onclick="return confirm('Are you sure you want to delete this course?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
