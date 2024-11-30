@@ -26,18 +26,18 @@
 
     <!-- Quick Actions -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <a href="{{ url_for('staff.view_applications') }}" 
-           class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
+        <a href="{{ url_for('staff.view_applications') }}"
+            class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Review Applications</h3>
             <p class="text-sm text-gray-600">Review and process pending TA applications</p>
         </a>
         <a href="{{ url_for('staff.manage_courses') }}"
-           class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
+            class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Manage Courses</h3>
             <p class="text-sm text-gray-600">Add, edit, or remove course listings</p>
         </a>
         <a href="{{ url_for('staff.view_recommendations') }}"
-           class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
+            class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">View Recommendations</h3>
             <p class="text-sm text-gray-600">Track TA recommendations for courses</p>
         </a>
@@ -48,8 +48,8 @@
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-900">Recent Applications</h2>
-                <a href="{{ url_for('staff.view_applications') }}" 
-                   class="text-blue-600 hover:text-blue-800 text-sm">View All</a>
+                <a href="{{ url_for('staff.view_applications') }}"
+                    class="text-blue-600 hover:text-blue-800 text-sm">View All</a>
             </div>
         </div>
         <div class="overflow-x-auto">
@@ -89,8 +89,8 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <a href="{{ url_for('staff.review_application', application_id=app.id) }}" 
-                               class="text-blue-600 hover:text-blue-900">Review</a>
+                            <a href="{{ url_for('staff.review_application', application_id=app.id) }}"
+                                class="text-blue-600 hover:text-blue-900">Review</a>
                         </td>
                     </tr>
                     {% else %}
@@ -110,8 +110,8 @@
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-900">Courses Needing TAs</h2>
-                <a href="{{ url_for('staff.manage_courses') }}" 
-                   class="text-blue-600 hover:text-blue-800 text-sm">Manage Courses</a>
+                <a href="{{ url_for('staff.manage_courses') }}" class="text-blue-600 hover:text-blue-800 text-sm">Manage
+                    Courses</a>
             </div>
         </div>
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -138,8 +138,8 @@
                     {% endif %}
                 </div>
                 <div class="mt-4 flex justify-end">
-                    <a href="{{ url_for('staff.recommend_tas', course_id=course_id) }}"
-                       class="text-blue-600 hover:text-blue-800 text-sm">Find TAs</a>
+                    <a href="{{ url_for('staff.view_recommendations', course_id=course_id) }}"
+                        class="text-blue-600 hover:text-blue-800 text-sm">View Recommendations</a>
                 </div>
             </div>
             {% else %}

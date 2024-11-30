@@ -278,9 +278,18 @@ def delete_course(course_id):
 def view_recommendations():
     _, _, db, _ = get_firebase()
     
-    # Get all recommendations with application and course details
+    # Get course_id from query parameters if provided
+    course_id = request.args.get('course_id')
+    
+    # Get all recommendations
     recommendations = db.child("recommendations").get().val() or {}
     
+    # Filter by course if course_id provided
+    if course_id:
+        recommendations = {k: v for k, v in recommendations.items() 
+                         if v.get('course_id') == course_id}
+    
+    # Enrich recommendations with application and course details
     enriched_recommendations = []
     for rec_id, rec in recommendations.items():
         application = db.child("applications").child(rec['application_id']).get().val()
@@ -297,5 +306,10 @@ def view_recommendations():
                 'course_name': course.get('name')
             })
     
+    courses = db.child("courses").get().val() or {}
+    departments = db.child("departments").get().val() or {}
+    
     return render_template('staff/recommendations.html',
-                         recommendations=enriched_recommendations)
+                         recommendations=enriched_recommendations,
+                         courses=courses,
+                         departments=departments)
