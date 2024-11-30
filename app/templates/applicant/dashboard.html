@@ -59,18 +59,7 @@
                     <tr>
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                             {{ app.submission_date|datetime }}
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            {% if app.course_ids %}
-                                {% for course_id in app.course_ids %}
-                                    <span class="inline-block bg-blue-100 text-blue-800 rounded-full px-3 py-1 text-sm font-medium mr-2">
-                                        {{ courses[course_id].name }}
-                                    </span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="text-gray-500">No courses assigned</span>
-                            {% endif %}
-                        </td>                        
+                        </td>                       
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                             <span class="inline-flex px-2 py-1 leading-none text-xs font-semibold rounded-full
                                 {% if app.status == 'Draft' %}bg-gray-200 text-gray-800
