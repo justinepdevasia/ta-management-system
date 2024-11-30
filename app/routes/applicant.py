@@ -50,19 +50,7 @@ def new_application():
             prev_courses = request.form.getlist('previous_courses')
             prev_dates = request.form.getlist('previous_dates')
             
-            # Handle CV upload
-            cv_file = request.files.get('cv')
-            cv_url = None
-            if cv_file:
-                # Generate unique filename
-                file_extension = cv_file.filename.rsplit('.', 1)[1].lower()
-                filename = f"cvs/{session['user_id']}/{str(uuid.uuid4())}.{file_extension}"
-                
-                # Upload file to Firebase Storage
-                storage.child(filename).put(cv_file)
-                cv_url = storage.child(filename).get_url(None)
-            
-            # Create application data
+            # Prepare application data first
             application_data = {
                 "applicant_id": session['user_id'],
                 "status": "Draft",
@@ -71,7 +59,6 @@ def new_application():
                 "previous_experience": previous_experience,
                 "previous_courses": prev_courses if previous_experience else [],
                 "previous_dates": prev_dates if previous_experience else [],
-                "cv_url": cv_url,
                 "gpa": request.form.get('gpa'),
                 "semester": request.form.get('semester'),
                 "current_step": request.form.get('current_step'),
@@ -81,6 +68,26 @@ def new_application():
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat()
             }
+
+            # Handle CV upload if file is provided
+            cv_file = request.files.get('cv')
+            if cv_file and cv_file.filename:
+                try:
+                    # Generate unique filename
+                    file_extension = cv_file.filename.rsplit('.', 1)[1].lower()
+                    filename = f"cvs/{session['user_id']}/{str(uuid.uuid4())}.{file_extension}"
+                    
+                    # Upload file to Firebase Storage
+                    storage.child(filename).put(cv_file)
+                    
+                    # Get the URL only if upload was successful
+                    cv_url = storage.child(filename).get_url(None)
+                    application_data["cv_url"] = cv_url
+                except Exception as e:
+                    # Log the error but continue with application creation
+                    print(f"CV upload failed: {str(e)}")
+                    # Still create application without CV
+                    application_data["cv_url"] = None
             
             # Save application
             db.child("applications").push(application_data)
@@ -95,7 +102,7 @@ def new_application():
     # GET request - show application form
     courses = db.child("courses").get().val() or {}
     return render_template('applicant/new_application.html', courses=courses)
-
+    
 @applicant_bp.route('/application/<application_id>', methods=['GET'])
 @login_required
 @role_required(['applicant'])
