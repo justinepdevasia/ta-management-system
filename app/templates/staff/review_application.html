@@ -5,16 +5,21 @@
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <div class="max-w-4xl mx-auto">
-        <div class="mb-6">
+        <div class="mb-6 flex justify-between items-center">
             <h1 class="text-2xl font-bold">Review Application</h1>
-            <p class="text-gray-600">Submitted on {{ application.submission_date|datetime }}</p>
+            <span class="inline-flex px-3 py-1 text-sm font-semibold rounded-full
+                {% if application.status == 'Submitted' %}bg-yellow-100 text-yellow-800
+                {% elif application.status == 'Reviewed' %}bg-blue-100 text-blue-800
+                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                {{ application.status }}
+            </span>
         </div>
 
         <!-- Applicant Information -->
         <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
-            <div class="p-6 border-b">
+            <div class="p-6 border-b border-gray-200">
                 <h2 class="text-xl font-semibold mb-4">Applicant Information</h2>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Name</label>
                         <p class="mt-1 text-gray-900">{{ applicant.name }}</p>
@@ -29,35 +34,30 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">CV</label>
-                        <p class="mt-1">
-                            <a href="{{ application.cv_url }}" target="_blank" 
-                               class="text-blue-600 hover:text-blue-800">View CV</a>
-                        </p>
+                        {% if application.cv_url %}
+                        <a href="{{ application.cv_url }}" target="_blank" 
+                           class="mt-1 inline-flex items-center text-blue-600 hover:text-blue-800">
+                            View CV
+                            <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </a>
+                        {% else %}
+                        <p class="mt-1 text-gray-500">No CV uploaded</p>
+                        {% endif %}
                     </div>
-                </div>
-            </div>
-
-            <!-- Selected Courses -->
-            <div class="p-6 border-b">
-                <h2 class="text-xl font-semibold mb-4">Selected Courses</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {% for course_id in application.qualified_courses %}
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <h3 class="font-semibold">{{ courses[course_id].code }}</h3>
-                        <p class="text-gray-600">{{ courses[course_id].name }}</p>
-                    </div>
-                    {% endfor %}
                 </div>
             </div>
 
             <!-- Previous Experience -->
             {% if application.previous_experience %}
-            <div class="p-6 border-b">
+            <div class="p-6 border-b border-gray-200">
                 <h2 class="text-xl font-semibold mb-4">Previous TA Experience</h2>
                 <div class="space-y-4">
                     {% for i in range(application.previous_courses|length) %}
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <p class="font-semibold">{{ application.previous_courses[i] }}</p>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <p class="font-medium text-gray-900">{{ application.previous_courses[i] }}</p>
                         <p class="text-gray-600">{{ application.previous_dates[i] }}</p>
                     </div>
                     {% endfor %}
@@ -71,14 +71,14 @@
                 <div class="space-y-4">
                     {% if application.research_interests %}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Research Interests</label>
-                        <p class="text-gray-900">{{ application.research_interests }}</p>
+                        <label class="block text-sm font-medium text-gray-700">Research Interests</label>
+                        <p class="mt-1 text-gray-900">{{ application.research_interests }}</p>
                     </div>
                     {% endif %}
                     {% if application.additional_skills %}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Additional Skills</label>
-                        <p class="text-gray-900">{{ application.additional_skills }}</p>
+                        <label class="block text-sm font-medium text-gray-700">Additional Skills</label>
+                        <p class="mt-1 text-gray-900">{{ application.additional_skills }}</p>
                     </div>
                     {% endif %}
                 </div>
@@ -88,77 +88,88 @@
         <!-- Review Form -->
         <form method="POST" class="bg-white rounded-lg shadow-lg overflow-hidden">
             <div class="p-6">
-                <h2 class="text-xl font-semibold mb-4">Staff Review</h2>
-                
+                <h2 class="text-xl font-semibold mb-6">Evaluation</h2>
+
                 <!-- Evaluation Criteria -->
-                <div class="space-y-6 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Academic Strength</label>
-                        <select name="academic_strength" required 
-                                class="w-full rounded-md border-gray-300">
+                        <select name="academic_strength" required class="w-full rounded-lg border-gray-300">
+                            <option value="">Select rating</option>
                             {% for i in range(1, 6) %}
-                            <option value="{{ i }}">{{ i }}</option>
+                            <option value="{{ i }}">{{ i }} - {{ ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][i-1] }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Teaching Potential</label>
-                        <select name="teaching_potential" required 
-                                class="w-full rounded-md border-gray-300">
+                        <select name="teaching_potential" required class="w-full rounded-lg border-gray-300">
+                            <option value="">Select rating</option>
                             {% for i in range(1, 6) %}
-                            <option value="{{ i }}">{{ i }}</option>
+                            <option value="{{ i }}">{{ i }} - {{ ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][i-1] }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Technical Skills</label>
-                        <select name="technical_skills" required 
-                                class="w-full rounded-md border-gray-300">
+                        <select name="technical_skills" required class="w-full rounded-lg border-gray-300">
+                            <option value="">Select rating</option>
                             {% for i in range(1, 6) %}
-                            <option value="{{ i }}">{{ i }}</option>
+                            <option value="{{ i }}">{{ i }} - {{ ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][i-1] }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Communication</label>
-                        <select name="communication" required 
-                                class="w-full rounded-md border-gray-300">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Communication Skills</label>
+                        <select name="communication" required class="w-full rounded-lg border-gray-300">
+                            <option value="">Select rating</option>
                             {% for i in range(1, 6) %}
-                            <option value="{{ i }}">{{ i }}</option>
+                            <option value="{{ i }}">{{ i }} - {{ ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][i-1] }}</option>
                             {% endfor %}
                         </select>
                     </div>
                 </div>
 
-                <!-- Recommended Courses -->
+                <!-- Course Recommendations -->
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Recommended Courses</label>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {% for course_id, course in courses.items() %}
-                        <div class="flex items-center">
-                            <input type="checkbox" name="recommended_courses" value="{{ course_id }}"
-                                   class="form-checkbox h-4 w-4 text-blue-600">
-                            <label class="ml-2">
-                                {{ course.code }} - {{ course.name }}
-                            </label>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Recommended Courses</h3>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="mb-4 text-sm text-gray-600">
+                            Select courses that match the applicant's qualifications and skills.
                         </div>
-                        {% endfor %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for course_id, course in courses.items() %}
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" name="recommended_courses" value="{{ course_id }}"
+                                       class="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-900">
+                                        {{ course.course_code }} - {{ course.name }}
+                                    </label>
+                                    <p class="text-xs text-gray-500">
+                                        {{ course.ta_requirements.hours_per_week }} hours/week
+                                        • {{ course.ta_requirements.number_needed }} TA(s) needed
+                                    </p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
 
                 <!-- Comments -->
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Comments</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Review Comments</label>
                     <textarea name="comments" rows="4" required
-                              class="w-full rounded-md border-gray-300"
-                              placeholder="Enter your review comments..."></textarea>
+                              class="w-full rounded-lg border-gray-300"
+                              placeholder="Enter your review comments and observations..."></textarea>
                 </div>
 
                 <!-- Overall Recommendation -->
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Overall Recommendation</label>
-                    <select name="overall_recommendation" required 
-                            class="w-full rounded-md border-gray-300">
+                    <select name="overall_recommendation" required class="w-full rounded-lg border-gray-300">
+                        <option value="">Select recommendation</option>
                         <option value="highly_recommended">Highly Recommended</option>
                         <option value="recommended">Recommended</option>
                         <option value="recommended_with_reservations">Recommended with Reservations</option>
@@ -166,14 +177,14 @@
                     </select>
                 </div>
 
-                <!-- Submit Buttons -->
+                <!-- Action Buttons -->
                 <div class="flex justify-end space-x-4">
                     <a href="{{ url_for('staff.view_applications') }}"
-                       class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                       class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                         Cancel
                     </a>
-                    <button type="submit" 
-                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                         Submit Review
                     </button>
                 </div>

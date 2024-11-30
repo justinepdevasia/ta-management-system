@@ -1,5 +1,3 @@
-# app/routes/staff.py
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from app.utils.decorators import login_required, role_required
 from app.utils.firebase import get_firebase
@@ -8,15 +6,6 @@ import uuid
 
 staff_bp = Blueprint('staff', __name__, url_prefix='/staff')
 
-DEPARTMENTS = {
-    'cs': 'Computer Science',
-    'math': 'Mathematics',
-    'physics': 'Physics',
-    'eng': 'Engineering',
-    'bio': 'Biology',
-    'chem': 'Chemistry'
-}
-
 @staff_bp.route('/dashboard')
 @login_required
 @role_required(['staff'])
@@ -24,188 +13,44 @@ def dashboard():
     _, _, db, _ = get_firebase()
     
     # Get summary statistics
+    all_applications = db.child("applications").get().val() or {}
+    pending_applications = {k: v for k, v in all_applications.items() if v.get('status') == 'Submitted'}
+    reviewed_applications = {k: v for k, v in all_applications.items() if v.get('status') == 'Reviewed'}
+    
     stats = {
-        'total_applications': len(db.child("applications").get().val() or {}),
-        'pending_review': len(db.child("applications").order_by_child("status").equal_to("Submitted").get().val() or {}),
-        'courses_needing_tas': len(db.child("courses").order_by_child("ta_assigned").equal_to(False).get().val() or {}),
-        'active_tas': len(db.child("ta_assignments").order_by_child("status").equal_to("Active").get().val() or {})
+        'total_applications': len(all_applications),
+        'pending_review': len(pending_applications),
+        'reviewed': len(reviewed_applications),
+        'courses_needing_tas': len(db.child("courses").order_by_child("ta_assigned").equal_to(False).get().val() or {})
     }
     
-    # Get recent applications
-    recent_applications = db.child("applications").order_by_child("submission_date").limit_to_last(5).get().val() or {}
+    # Get recent applications with applicant details
+    recent_applications = []
+    for app_id, app in all_applications.items():
+        if len(recent_applications) >= 5:  # Limit to 5 recent applications
+            break
+            
+        applicant = db.child("users").child(app.get('applicant_id')).get().val()
+        if applicant:
+            app_data = {
+                'id': app_id,
+                **app,
+                'applicant_name': applicant.get('name'),
+                'applicant_email': applicant.get('email')
+            }
+            recent_applications.append(app_data)
     
-    # Get courses needing TAs with assigned TAs info
-    courses_needing_tas = {}
-    all_courses = db.child("courses").order_by_child("ta_assigned").equal_to(False).get().val() or {}
-    ta_assignments = db.child("ta_assignments").get().val() or {}
+    # Get courses needing TAs
+    courses = db.child("courses").order_by_child("ta_assigned").equal_to(False).get().val() or {}
     
-    for course_id, course in all_courses.items():
-        course_tas = [ta for ta in ta_assignments.values() if ta.get('course_id') == course_id]
-        course['assigned_tas'] = course_tas
-        courses_needing_tas[course_id] = course
-    
-    # Get instructors for the course input form
-    instructors = db.child("users").order_by_child("role").equal_to("instructor").get().val() or {}
+    # Get course recommendations
+    recommendations = db.child("recommendations").get().val() or {}
     
     return render_template('staff/dashboard.html',
                          stats=stats,
                          recent_applications=recent_applications,
-                         courses_needing_tas=courses_needing_tas,
-                         departments=DEPARTMENTS,  # Use hardcoded departments
-                         instructors=instructors)
-
-@staff_bp.route('/courses', methods=['GET', 'POST'])
-@login_required
-@role_required(['staff'])
-def manage_courses():
-    _, _, db, _ = get_firebase()
-    
-    if request.method == 'POST':
-        try:
-            department_code = request.form['department']
-            course_data = {
-                "course_code": request.form['course_code'],
-                "name": request.form['name'],
-                "department": department_code,
-                "department_name": DEPARTMENTS[department_code],
-                "semester": request.form.get('semester', 'Fall 2024'),
-                "ta_requirements": {
-                    "number_needed": int(request.form['number_needed']),
-                    "hours_per_week": int(request.form['hours_per_week']),
-                    "required_skills": request.form.get('required_skills', '').split(','),
-                    "preferred_skills": request.form.get('preferred_skills', '').split(',')
-                },
-                "ta_assigned": False,
-                "created_by": session['user_id'],
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat()
-            }
-            
-            db.child("courses").push(course_data)
-            flash('Course added successfully!', 'success')
-            
-        except Exception as e:
-            flash(f'Error adding course: {str(e)}', 'error')
-    
-    # Get all courses and related data
-    courses = db.child("courses").get().val() or {}
-    instructors = db.child("users").order_by_child("role").equal_to("instructor").get().val() or {}
-    ta_assignments = db.child("ta_assignments").get().val() or {}
-    
-    # Add TA information to courses
-    for course_id, course in courses.items():
-        course_tas = [ta for ta in ta_assignments.values() if ta.get('course_id') == course_id]
-        course['assigned_tas'] = course_tas
-    
-    return render_template('staff/manage_courses.html',
                          courses=courses,
-                         instructors=instructors,
-                         departments=DEPARTMENTS)
-
-@staff_bp.route('/course/<course_id>/tas')
-@login_required
-@role_required(['staff'])
-def get_course_tas(course_id):
-    _, _, db, _ = get_firebase()
-    
-    try:
-        assignments = db.child("ta_assignments").order_by_child("course_id").equal_to(course_id).get().val() or {}
-        
-        ta_details = []
-        for assignment in assignments.values():
-            ta_user = db.child("users").child(assignment.get('user_id')).get().val()
-            if ta_user:
-                ta_details.append({
-                    'name': ta_user.get('name'),
-                    'hours_per_week': assignment.get('hours_per_week'),
-                    'status': assignment.get('status'),
-                    'start_date': assignment.get('start_date'),
-                    'end_date': assignment.get('end_date')
-                })
-        
-        return jsonify(ta_details)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@staff_bp.route('/course/<course_id>/assign-ta', methods=['POST'])
-@login_required
-@role_required(['staff'])
-def assign_ta_to_course(course_id):
-    _, _, db, _ = get_firebase()
-    
-    try:
-        assignment_data = {
-            'course_id': course_id,
-            'user_id': request.form['user_id'],
-            'hours_per_week': int(request.form['hours_per_week']),
-            'start_date': request.form['start_date'],
-            'end_date': request.form['end_date'],
-            'status': 'Active',
-            'assigned_by': session['user_id'],
-            'assigned_at': datetime.now().isoformat()
-        }
-        
-        # Create assignment
-        db.child("ta_assignments").push(assignment_data)
-        
-        # Update user role
-        db.child("users").child(request.form['user_id']).update({'role': 'ta'})
-        
-        # Check if course has all needed TAs
-        course = db.child("courses").child(course_id).get().val()
-        assignments = db.child("ta_assignments").order_by_child("course_id").equal_to(course_id).get().val() or {}
-        
-        if len(assignments) >= course['ta_requirements']['number_needed']:
-            db.child("courses").child(course_id).update({'ta_assigned': True})
-        
-        flash('TA assigned successfully!', 'success')
-        
-    except Exception as e:
-        flash(f'Error assigning TA: {str(e)}', 'error')
-    
-    return redirect(url_for('staff.dashboard'))
-
-@staff_bp.route('/course/<course_id>/recommend-tas')
-@login_required
-@role_required(['staff'])
-def recommend_tas(course_id):
-    _, _, db, _ = get_firebase()
-    
-    course = db.child("courses").child(course_id).get().val()
-    if not course:
-        flash('Course not found.', 'error')
-        return redirect(url_for('staff.manage_courses'))
-    
-    # Get all reviewed applications
-    applications = db.child("applications").order_by_child("status").equal_to("Reviewed").get().val() or {}
-    
-    recommended_tas = []
-    required_skills = set(course['ta_requirements'].get('required_skills', []))
-    preferred_skills = set(course['ta_requirements'].get('preferred_skills', []))
-    
-    for app_id, app in applications.items():
-        applicant_skills = set(app.get('skills', []))
-        required_match = len(required_skills & applicant_skills) / len(required_skills) if required_skills else 1
-        preferred_match = len(preferred_skills & applicant_skills) / len(preferred_skills) if preferred_skills else 0
-        
-        if required_match > 0.7:  # At least 70% match on required skills
-            recommendation = {
-                'application_id': app_id,
-                'applicant_name': app['applicant_name'],
-                'required_skills_match': round(required_match * 100, 1),
-                'preferred_skills_match': round(preferred_match * 100, 1),
-                'overall_score': round((required_match * 0.7 + preferred_match * 0.3) * 100, 1),
-                'application': app
-            }
-            recommended_tas.append(recommendation)
-    
-    # Sort by overall score
-    recommended_tas.sort(key=lambda x: x['overall_score'], reverse=True)
-    
-    return render_template('staff/recommend_tas.html',
-                         course=course,
-                         recommendations=recommended_tas)
+                         recommendations=recommendations)
 
 @staff_bp.route('/applications')
 @login_required
@@ -213,23 +58,46 @@ def recommend_tas(course_id):
 def view_applications():
     _, _, db, _ = get_firebase()
     
-    status_filter = request.args.get('status', 'Submitted')
-    department_filter = request.args.get('department', None)
+    status_filter = request.args.get('status', 'all')
+    department_filter = request.args.get('department')
     
-    applications = db.child("applications").order_by_child("status").equal_to(status_filter).get().val() or {}
+    # Get all applications
+    applications = db.child("applications").get().val() or {}
     
-    if department_filter:
-        applications = {k: v for k, v in applications.items() 
-                      if v.get('department') == department_filter}
+    # Get applicant details for each application
+    enriched_applications = []
+    for app_id, app in applications.items():
+        applicant = db.child("users").child(app.get('applicant_id')).get().val()
+        if applicant:
+            app_data = {
+                'id': app_id,
+                **app,
+                'applicant_name': applicant.get('name'),
+                'applicant_email': applicant.get('email')
+            }
+            
+            # Apply filters
+            if status_filter != 'all' and app.get('status') != status_filter:
+                continue
+            if department_filter and app.get('department') != department_filter:
+                continue
+                
+            enriched_applications.append(app_data)
     
+    # Sort by submission date (newest first)
+    enriched_applications.sort(key=lambda x: x.get('submission_date', ''), reverse=True)
+    
+    departments = db.child("departments").get().val() or {}
     courses = db.child("courses").get().val() or {}
     
     return render_template('staff/applications.html',
-                         applications=applications,
+                         applications=enriched_applications,
+                         departments=departments,
                          courses=courses,
-                         departments=DEPARTMENTS,
-                         current_status=status_filter,
-                         current_department=department_filter)
+                         current_filters={
+                             'status': status_filter,
+                             'department': department_filter
+                         })
 
 @staff_bp.route('/application/<application_id>/review', methods=['GET', 'POST'])
 @login_required
@@ -239,28 +107,39 @@ def review_application(application_id):
     
     if request.method == 'POST':
         try:
-            recommendation = {
+            # Prepare review data
+            review_data = {
                 "reviewer_id": session['user_id'],
-                "recommended_courses": request.form.getlist('recommended_courses'),
+                "reviewer_name": session.get('name'),
                 "evaluation": {
                     "academic_strength": int(request.form['academic_strength']),
                     "teaching_potential": int(request.form['teaching_potential']),
                     "technical_skills": int(request.form['technical_skills']),
                     "communication": int(request.form['communication'])
                 },
+                "recommended_courses": request.form.getlist('recommended_courses'),
                 "comments": request.form['comments'],
                 "overall_recommendation": request.form['overall_recommendation'],
-                "created_at": datetime.now().isoformat()
+                "review_date": datetime.now().isoformat()
             }
             
-            # Add recommendation to application
-            db.child("applications").child(application_id).child("staff_review").set(recommendation)
-            
-            # Update application status
+            # Update application with review
             db.child("applications").child(application_id).update({
                 "status": "Reviewed",
+                "staff_review": review_data,
                 "updated_at": datetime.now().isoformat()
             })
+            
+            # Create course recommendations
+            for course_id in review_data['recommended_courses']:
+                recommendation_data = {
+                    "application_id": application_id,
+                    "course_id": course_id,
+                    "reviewer_id": session['user_id'],
+                    "evaluation_scores": review_data['evaluation'],
+                    "created_at": datetime.now().isoformat()
+                }
+                db.child("recommendations").push(recommendation_data)
             
             flash('Application review submitted successfully!', 'success')
             return redirect(url_for('staff.view_applications'))
@@ -270,16 +149,153 @@ def review_application(application_id):
     
     # Get application data
     application = db.child("applications").child(application_id).get().val()
-    
     if not application:
         flash('Application not found.', 'error')
         return redirect(url_for('staff.view_applications'))
     
-    # Get related data
-    courses = db.child("courses").get().val() or {}
+    # Get applicant details
     applicant = db.child("users").child(application['applicant_id']).get().val() or {}
     
+    # Get available courses for recommendations
+    courses = db.child("courses").order_by_child("ta_assigned").equal_to(False).get().val() or {}
+    
     return render_template('staff/review_application.html',
-                         application=application,
+                         application={**application, 'id': application_id},
+                         applicant=applicant,
+                         courses=courses)
+
+@staff_bp.route('/courses', methods=['GET', 'POST'])
+@login_required
+@role_required(['staff'])
+def manage_courses():
+    _, _, db, _ = get_firebase()
+    
+    if request.method == 'POST':
+        try:
+            course_data = {
+                "course_code": request.form['course_code'],
+                "name": request.form['name'],
+                "department": request.form['department'],
+                "semester": request.form['semester'],
+                "instructor_id": request.form['instructor_id'],
+                "ta_requirements": {
+                    "number_needed": int(request.form['number_needed']),
+                    "hours_per_week": int(request.form['hours_per_week']),
+                    "required_skills": [s.strip() for s in request.form.get('required_skills', '').split(',') if s.strip()],
+                    "preferred_skills": [s.strip() for s in request.form.get('preferred_skills', '').split(',') if s.strip()]
+                },
+                "ta_assigned": False,
+                "created_by": session['user_id'],
+                "created_at": datetime.now().isoformat()
+            }
+            
+            db.child("courses").push(course_data)
+            flash('Course added successfully!', 'success')
+            return redirect(url_for('staff.manage_courses'))
+            
+        except Exception as e:
+            flash(f'Error adding course: {str(e)}', 'error')
+    
+    # Get all courses with department and instructor details
+    courses = db.child("courses").get().val() or {}
+    departments = db.child("departments").get().val() or {}
+    instructors = db.child("users").order_by_child("role").equal_to("instructor").get().val() or {}
+    
+    return render_template('staff/manage_courses.html',
                          courses=courses,
-                         applicant=applicant)
+                         departments=departments,
+                         instructors=instructors)
+
+@staff_bp.route('/course/<course_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required(['staff'])
+def edit_course(course_id):
+    _, _, db, _ = get_firebase()
+    
+    if request.method == 'POST':
+        try:
+            course_data = {
+                "course_code": request.form['course_code'],
+                "name": request.form['name'],
+                "department": request.form['department'],
+                "semester": request.form['semester'],
+                "instructor_id": request.form['instructor_id'],
+                "ta_requirements": {
+                    "number_needed": int(request.form['number_needed']),
+                    "hours_per_week": int(request.form['hours_per_week']),
+                    "required_skills": [s.strip() for s in request.form.get('required_skills', '').split(',') if s.strip()],
+                    "preferred_skills": [s.strip() for s in request.form.get('preferred_skills', '').split(',') if s.strip()]
+                },
+                "updated_by": session['user_id'],
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            db.child("courses").child(course_id).update(course_data)
+            flash('Course updated successfully!', 'success')
+            return redirect(url_for('staff.manage_courses'))
+            
+        except Exception as e:
+            flash(f'Error updating course: {str(e)}', 'error')
+    
+    # Get course data
+    course = db.child("courses").child(course_id).get().val()
+    if not course:
+        flash('Course not found.', 'error')
+        return redirect(url_for('staff.manage_courses'))
+    
+    departments = db.child("departments").get().val() or {}
+    instructors = db.child("users").order_by_child("role").equal_to("instructor").get().val() or {}
+    
+    return render_template('staff/edit_course.html',
+                         course={**course, 'id': course_id},
+                         departments=departments,
+                         instructors=instructors)
+
+@staff_bp.route('/course/<course_id>/delete', methods=['POST'])
+@login_required
+@role_required(['staff'])
+def delete_course(course_id):
+    _, _, db, _ = get_firebase()
+    
+    try:
+        # Check if course has any TA assignments
+        assignments = db.child("ta_assignments").order_by_child("course_id").equal_to(course_id).get().val()
+        if assignments:
+            flash('Cannot delete course with active TA assignments.', 'error')
+            return redirect(url_for('staff.manage_courses'))
+        
+        db.child("courses").child(course_id).remove()
+        flash('Course deleted successfully!', 'success')
+        
+    except Exception as e:
+        flash(f'Error deleting course: {str(e)}', 'error')
+    
+    return redirect(url_for('staff.manage_courses'))
+
+@staff_bp.route('/recommendations')
+@login_required
+@role_required(['staff'])
+def view_recommendations():
+    _, _, db, _ = get_firebase()
+    
+    # Get all recommendations with application and course details
+    recommendations = db.child("recommendations").get().val() or {}
+    
+    enriched_recommendations = []
+    for rec_id, rec in recommendations.items():
+        application = db.child("applications").child(rec['application_id']).get().val()
+        course = db.child("courses").child(rec['course_id']).get().val()
+        applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
+        
+        if application and course and applicant:
+            enriched_recommendations.append({
+                'id': rec_id,
+                **rec,
+                'applicant_name': applicant.get('name'),
+                'applicant_email': applicant.get('email'),
+                'course_code': course.get('course_code'),
+                'course_name': course.get('name')
+            })
+    
+    return render_template('staff/recommendations.html',
+                         recommendations=enriched_recommendations)
