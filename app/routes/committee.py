@@ -82,77 +82,6 @@ def view_courses():
                          courses=courses,
                          departments=departments)
 
-@committee_bp.route('/course/<course_id>/recommendations')
-@login_required
-@role_required(['committee'])
-def course_recommendations(course_id):
-    _, _, db, _ = get_firebase()
-    
-    try:
-        # Get course details
-        course = db.child("courses").child(course_id).get().val()
-        if not course:
-            flash('Course not found.', 'error')
-            return redirect(url_for('committee.view_courses'))
-        
-        # Get current TA assignments
-        current_assignments = db.child("ta_assignments")\
-            .order_by_child("course_id")\
-            .equal_to(course_id)\
-            .get().val() or {}
-        
-        # Get recommendations - with fallback for missing index
-        try:
-            recommendations = db.child("recommendations")\
-                .order_by_child("course_id")\
-                .equal_to(course_id)\
-                .get().val() or {}
-        except:
-            # Fallback: Get all recommendations and filter manually
-            all_recommendations = db.child("recommendations").get().val() or {}
-            recommendations = {
-                k: v for k, v in all_recommendations.items()
-                if v.get('course_id') == course_id
-            }
-        
-        # Enrich recommendations with applicant data
-        enriched_recommendations = []
-        for rec_id, rec in recommendations.items():
-            application = db.child("applications").child(rec['application_id']).get().val()
-            applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
-            
-            if application and applicant:
-                # Skip if applicant is already assigned to this course
-                if any(a.get('ta_id') == application['applicant_id'] for a in current_assignments.values()):
-                    continue
-                    
-                enriched_recommendations.append({
-                    'id': rec_id,
-                    **rec,
-                    'applicant_name': applicant.get('name'),
-                    'applicant_email': applicant.get('email'),
-                    'application_id': application.get('id', ''),
-                    'application_status': application.get('status'),
-                    'gpa': application.get('gpa'),
-                    'evaluation_scores': rec.get('evaluation_scores', {})
-                })
-        
-        # Sort recommendations by average evaluation score
-        for rec in enriched_recommendations:
-            scores = rec['evaluation_scores']
-            rec['average_score'] = sum(scores.values()) / len(scores) if scores else 0
-        
-        enriched_recommendations.sort(key=lambda x: x['average_score'], reverse=True)
-        
-        return render_template('committee/course_recommendations.html',
-                             course=course,
-                             recommendations=enriched_recommendations,
-                             current_assignments=current_assignments)
-                             
-    except Exception as e:
-        flash(f'Error loading recommendations: {str(e)}', 'error')
-        return redirect(url_for('committee.view_courses'))
-
 @committee_bp.route('/course/<course_id>/select-ta/<application_id>', methods=['POST'])
 @login_required
 @role_required(['committee'])
@@ -163,7 +92,8 @@ def select_ta(course_id, application_id):
         # Verify course exists and needs TAs
         course = db.child("courses").child(course_id).get().val()
         if not course:
-            return jsonify({'error': 'Course not found'}), 404
+            flash('Course not found.', 'error')
+            return redirect(url_for('committee.course_recommendations', course_id=course_id))
         
         current_assignments = db.child("ta_assignments")\
             .order_by_child("course_id")\
@@ -171,12 +101,14 @@ def select_ta(course_id, application_id):
             .get().val() or {}
             
         if len(current_assignments) >= int(course['ta_requirements']['number_needed']):
-            return jsonify({'error': 'Course has reached maximum number of TAs'}), 400
+            flash('Course has reached maximum number of TAs.', 'error')
+            return redirect(url_for('committee.course_recommendations', course_id=course_id))
         
         # Get application
         application = db.child("applications").child(application_id).get().val()
         if not application:
-            return jsonify({'error': 'Application not found'}), 404
+            flash('Application not found.', 'error')
+            return redirect(url_for('committee.course_recommendations', course_id=course_id))
         
         # Update application status
         db.child("applications").child(application_id).update({
@@ -185,6 +117,18 @@ def select_ta(course_id, application_id):
             "selected_date": datetime.now().isoformat(),
             "response_due_date": (datetime.now() + timedelta(days=7)).isoformat()
         })
+        
+        # Create TA assignment
+        assignment_data = {
+            "course_id": course_id,
+            "application_id": application_id,
+            "ta_id": application.get('applicant_id'),
+            "status": "Pending",
+            "assigned_by": session['user_id'],
+            "assigned_at": datetime.now().isoformat()
+        }
+        
+        db.child("ta_assignments").push(assignment_data)
         
         flash('TA selected successfully. Waiting for applicant response.', 'success')
         return redirect(url_for('committee.course_recommendations', course_id=course_id))
@@ -303,7 +247,7 @@ def api_select_ta():
             'success': False,
             'error': f'An error occurred: {str(e)}'
         }), 500
-        
+
 @committee_bp.route('/api/application/<application_id>', methods=['GET'])
 @login_required
 @role_required(['committee'])
