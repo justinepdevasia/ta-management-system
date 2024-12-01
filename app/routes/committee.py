@@ -241,43 +241,32 @@ def api_select_ta():
         if not course_id or not application_id:
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
         
-        # Verify course exists
+        # Get course and application details
         course = db.child("courses").child(course_id).get().val()
-        if not course:
-            return jsonify({'success': False, 'error': 'Course not found'}), 404
+        application = db.child("applications").child(application_id).get().val()
         
-        # Safely get ta_requirements with default value
+        if not course or not application:
+            return jsonify({'success': False, 'error': 'Course or application not found'}), 404
+        
+        # Verify course needs TAs
+        current_assignments = db.child("ta_assignments")\
+            .order_by_child("course_id")\
+            .equal_to(course_id)\
+            .get().val() or {}
+            
         ta_requirements = course.get('ta_requirements', {})
-        if not ta_requirements:
-            ta_requirements = {'number_needed': 1}  # Default to 1 if not specified
-        
         number_needed = int(ta_requirements.get('number_needed', 1))
         
-        # Get current assignments
-        try:
-            current_assignments = db.child("ta_assignments")\
-                .order_by_child("course_id")\
-                .equal_to(course_id)\
-                .get().val() or {}
-        except Exception as e:
-            print(f"Error getting assignments: {str(e)}")
-            current_assignments = {}
-            
         if len(current_assignments) >= number_needed:
             return jsonify({
-                'success': False, 
-                'error': f'Course has reached maximum number of TAs ({number_needed})'
+                'success': False,
+                'error': f'Course already has maximum number of TAs ({number_needed})'
             }), 400
         
-        # Get application
-        application = db.child("applications").child(application_id).get().val()
-        if not application:
-            return jsonify({'success': False, 'error': 'Application not found'}), 404
-        
-        # Check if already selected
+        # Verify application status is appropriate
         if application.get('status') in ['Selected', 'Accepted', 'Rejected']:
             return jsonify({
-                'success': False, 
+                'success': False,
                 'error': f'Application is already in {application.get("status")} status'
             }), 400
         
@@ -286,44 +275,35 @@ def api_select_ta():
             "status": "Selected",
             "selected_by": session['user_id'],
             "selected_date": datetime.now().isoformat(),
-            "response_due_date": (datetime.now() + timedelta(days=7)).isoformat(),
-            "course_id": course_id
+            "response_due_date": (datetime.now() + timedelta(days=7)).isoformat()
         }
         
-        try:
-            db.child("applications").child(application_id).update(update_data)
-            
-            # Also create a pending TA assignment
-            assignment_data = {
-                "course_id": course_id,
-                "application_id": application_id,
-                "ta_id": application.get('applicant_id'),
-                "status": "Pending",
-                "assigned_by": session['user_id'],
-                "assigned_at": datetime.now().isoformat()
-            }
-            
-            db.child("ta_assignments").push(assignment_data)
-            
-            return jsonify({
-                'success': True,
-                'message': 'TA selected successfully'
-            })
-            
-        except Exception as e:
-            print(f"Error updating data: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Database update failed: {str(e)}'
-            }), 500
+        db.child("applications").child(application_id).update(update_data)
+        
+        # Create TA assignment
+        assignment_data = {
+            "course_id": course_id,
+            "application_id": application_id,
+            "ta_id": application.get('applicant_id'),
+            "status": "Pending",
+            "assigned_by": session['user_id'],
+            "assigned_at": datetime.now().isoformat()
+        }
+        
+        db.child("ta_assignments").push(assignment_data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'TA selected successfully'
+        })
         
     except Exception as e:
-        print(f"Unexpected error: {str(e)}")
+        print(f"Error selecting TA: {str(e)}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': f'An error occurred: {str(e)}'
         }), 500
-
+        
 @committee_bp.route('/api/application/<application_id>', methods=['GET'])
 @login_required
 @role_required(['committee'])

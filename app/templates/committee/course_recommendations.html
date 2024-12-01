@@ -200,6 +200,7 @@
 
 <script>
 
+// Function to select a TA for a course
 function selectTA(courseId, applicationId) {
     if (!confirm('Are you sure you want to select this applicant as TA?')) {
         return;
@@ -209,13 +210,19 @@ function selectTA(courseId, applicationId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken() // Add CSRF token if needed
         },
         body: JSON.stringify({
             course_id: courseId,
             application_id: applicationId
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => Promise.reject(err));
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             alert('TA selected successfully!');
@@ -226,10 +233,11 @@ function selectTA(courseId, applicationId) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while selecting the TA. Please try again.');
+        alert(error.error || 'An error occurred while selecting the TA. Please try again.');
     });
 }
 
+// Function to view application details
 function viewApplication(applicationId) {
     const modal = document.getElementById('applicationModal');
     const content = document.getElementById('applicationContent');
@@ -237,7 +245,12 @@ function viewApplication(applicationId) {
     content.innerHTML = 'Loading application details...';
     
     fetch(`/committee/api/application/${applicationId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch application details');
+            }
+            return response.json();
+        })
         .then(data => {
             content.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -255,12 +268,14 @@ function viewApplication(applicationId) {
                         </div>
                     </div>
                     
-                    <div>
-                        <h4 class="font-medium text-gray-900">Previous Experience</h4>
-                        <div class="mt-2">
-                            ${data.previous_experience || '<p class="text-sm text-gray-500">No previous experience</p>'}
+                    ${data.previous_experience ? `
+                        <div>
+                            <h4 class="font-medium text-gray-900">Previous Experience</h4>
+                            <div class="mt-2">
+                                ${data.previous_experience}
+                            </div>
                         </div>
-                    </div>
+                    ` : ''}
                 </div>
 
                 <div class="mt-6">
@@ -273,7 +288,7 @@ function viewApplication(applicationId) {
                 <div class="mt-6">
                     <h4 class="font-medium text-gray-900">Additional Skills</h4>
                     <p class="mt-2 text-sm">
-                        ${data.additional_info || 'No additional skills specified'}
+                        ${data.additional_skills || 'No additional skills specified'}
                     </p>
                 </div>
 
