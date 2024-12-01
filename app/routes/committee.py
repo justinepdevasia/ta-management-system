@@ -306,54 +306,57 @@ def course_recommendations(course_id):
         if not course:
             flash('Course not found.', 'error')
             return redirect(url_for('committee.view_courses'))
+            
+        # Add the course_id to the course object
+        course['id'] = course_id  # This is the key change
         
-        # Get current TA assignments
+        # Rest of your existing code for getting assignments and recommendations...
         current_assignments = db.child("ta_assignments")\
             .order_by_child("course_id")\
             .equal_to(course_id)\
             .get().val() or {}
-        
-        # Get recommendations - with fallback for missing index
+            
         try:
             recommendations = db.child("recommendations")\
                 .order_by_child("course_id")\
                 .equal_to(course_id)\
                 .get().val() or {}
         except:
-            # Fallback: Get all recommendations and filter manually
             all_recommendations = db.child("recommendations").get().val() or {}
             recommendations = {
                 k: v for k, v in all_recommendations.items()
                 if v.get('course_id') == course_id
             }
-        
+            
         # Enrich recommendations with applicant data
         enriched_recommendations = []
         for rec_id, rec in recommendations.items():
             application = db.child("applications").child(rec['application_id']).get().val()
-            applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
-            
-            if application and applicant:
-                # Skip if applicant is already assigned to this course
-                if any(a.get('ta_id') == application['applicant_id'] for a in current_assignments.values()):
-                    continue
-                    
-                enriched_recommendations.append({
-                    'id': rec_id,
-                    **rec,
-                    'applicant_name': applicant.get('name'),
-                    'applicant_email': applicant.get('email'),
-                    'application_id': application.get('id', ''),
-                    'application_status': application.get('status'),
-                    'gpa': application.get('gpa'),
-                    'evaluation_scores': rec.get('evaluation_scores', {})
-                })
+            if application:
+                application['id'] = rec['application_id']  # Add the application ID to the object
+                applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
+                
+                if applicant:
+                    # Skip if applicant is already assigned to this course
+                    if any(a.get('ta_id') == application['applicant_id'] for a in current_assignments.values()):
+                        continue
+                        
+                    enriched_recommendations.append({
+                        'id': rec_id,
+                        **rec,
+                        'applicant_name': applicant.get('name'),
+                        'applicant_email': applicant.get('email'),
+                        'application_id': application['id'],  # Use the stored application ID
+                        'application_status': application.get('status'),
+                        'gpa': application.get('gpa'),
+                        'evaluation_scores': rec.get('evaluation_scores', {})
+                    })
         
         # Sort recommendations by average evaluation score
         for rec in enriched_recommendations:
             scores = rec['evaluation_scores']
             rec['average_score'] = sum(scores.values()) / len(scores) if scores else 0
-        
+            
         enriched_recommendations.sort(key=lambda x: x['average_score'], reverse=True)
         
         return render_template('committee/course_recommendations.html',
@@ -364,7 +367,7 @@ def course_recommendations(course_id):
     except Exception as e:
         flash(f'Error loading recommendations: {str(e)}', 'error')
         return redirect(url_for('committee.view_courses'))
-
+        
 @committee_bp.route('/reports')
 @login_required
 @role_required(['committee'])
