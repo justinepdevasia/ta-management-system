@@ -202,6 +202,8 @@
 
 // Function to select a TA for a course
 function selectTA(courseId, applicationId) {
+    console.log('Attempting to select TA:', {courseId, applicationId}); // Debug log
+    
     if (!confirm('Are you sure you want to select this applicant as TA?')) {
         return;
     }
@@ -209,8 +211,7 @@ function selectTA(courseId, applicationId) {
     fetch('/committee/api/select-ta', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken() // Add CSRF token if needed
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
             course_id: courseId,
@@ -218,12 +219,14 @@ function selectTA(courseId, applicationId) {
         })
     })
     .then(response => {
+        console.log('Response received:', response); // Debug log
         if (!response.ok) {
             return response.json().then(err => Promise.reject(err));
         }
         return response.json();
     })
     .then(data => {
+        console.log('Success response:', data); // Debug log
         if (data.success) {
             alert('TA selected successfully!');
             window.location.reload();
@@ -232,12 +235,11 @@ function selectTA(courseId, applicationId) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert(error.error || 'An error occurred while selecting the TA. Please try again.');
+        console.error('Error selecting TA:', error);
+        alert('An error occurred while selecting the TA. Please try again.');
     });
 }
 
-// Function to view application details
 function viewApplication(applicationId) {
     const modal = document.getElementById('applicationModal');
     const content = document.getElementById('applicationContent');
