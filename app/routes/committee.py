@@ -301,21 +301,22 @@ def course_recommendations(course_id):
     _, _, db, _ = get_firebase()
     
     try:
-        # Get course details
+        # Get course details and include the ID
         course = db.child("courses").child(course_id).get().val()
         if not course:
             flash('Course not found.', 'error')
             return redirect(url_for('committee.view_courses'))
             
         # Add the course_id to the course object
-        course['id'] = course_id  # This is the key change
+        course['id'] = course_id
         
-        # Rest of your existing code for getting assignments and recommendations...
+        # Get current TA assignments
         current_assignments = db.child("ta_assignments")\
             .order_by_child("course_id")\
             .equal_to(course_id)\
             .get().val() or {}
             
+        # Get recommendations
         try:
             recommendations = db.child("recommendations")\
                 .order_by_child("course_id")\
@@ -331,9 +332,13 @@ def course_recommendations(course_id):
         # Enrich recommendations with applicant data
         enriched_recommendations = []
         for rec_id, rec in recommendations.items():
-            application = db.child("applications").child(rec['application_id']).get().val()
+            # Make sure we have the application_id in the recommendation
+            application_id = rec.get('application_id')
+            if not application_id:
+                continue
+                
+            application = db.child("applications").child(application_id).get().val()
             if application:
-                application['id'] = rec['application_id']  # Add the application ID to the object
                 applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
                 
                 if applicant:
@@ -346,15 +351,16 @@ def course_recommendations(course_id):
                         **rec,
                         'applicant_name': applicant.get('name'),
                         'applicant_email': applicant.get('email'),
-                        'application_id': application['id'],  # Use the stored application ID
+                        'application_id': application_id,  # Use the original application_id from recommendation
                         'application_status': application.get('status'),
                         'gpa': application.get('gpa'),
-                        'evaluation_scores': rec.get('evaluation_scores', {})
+                        'evaluation_scores': rec.get('evaluation_scores', {}),
+                        'reviewer_name': rec.get('reviewer_name', 'Unknown Reviewer')
                     })
         
         # Sort recommendations by average evaluation score
         for rec in enriched_recommendations:
-            scores = rec['evaluation_scores']
+            scores = rec.get('evaluation_scores', {})
             rec['average_score'] = sum(scores.values()) / len(scores) if scores else 0
             
         enriched_recommendations.sort(key=lambda x: x['average_score'], reverse=True)
@@ -367,7 +373,7 @@ def course_recommendations(course_id):
     except Exception as e:
         flash(f'Error loading recommendations: {str(e)}', 'error')
         return redirect(url_for('committee.view_courses'))
-        
+
 @committee_bp.route('/reports')
 @login_required
 @role_required(['committee'])

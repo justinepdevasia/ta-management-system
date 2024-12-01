@@ -20,8 +20,8 @@
             </div>
             <p class="text-gray-600 mt-2">Department: {{ course.department_name }} | Semester: {{ course.semester }}</p>
         </div>
-        <a href="{{ url_for('committee.view_courses') }}" 
-           class="text-blue-600 hover:text-blue-800">← Back to Courses</a>
+        <a href="{{ url_for('committee.view_courses') }}" class="text-blue-600 hover:text-blue-800">← Back to
+            Courses</a>
     </div>
 
     <!-- Recommendations -->
@@ -57,7 +57,8 @@
                             <div class="text-sm font-medium text-gray-900">{{ rec.applicant_name }}</div>
                             <div class="text-sm text-gray-500">{{ rec.applicant_email }}</div>
                             <div class="mt-1">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                                     GPA: {{ rec.gpa }}
                                 </span>
                             </div>
@@ -68,8 +69,8 @@
                                 <div class="flex items-center text-sm">
                                     <span class="text-gray-500 w-32">Academic:</span>
                                     <div class="w-24 bg-gray-200 rounded-full h-2">
-                                        <div class="bg-blue-600 h-2 rounded-full" 
-                                             style="width: {{ (scores.academic_strength / 5 * 100)|round }}%">
+                                        <div class="bg-blue-600 h-2 rounded-full"
+                                            style="width: {{ (scores.academic_strength / 5 * 100)|round }}%">
                                         </div>
                                     </div>
                                     <span class="ml-2 text-xs">{{ scores.academic_strength }}/5</span>
@@ -77,8 +78,8 @@
                                 <div class="flex items-center text-sm">
                                     <span class="text-gray-500 w-32">Teaching:</span>
                                     <div class="w-24 bg-gray-200 rounded-full h-2">
-                                        <div class="bg-blue-600 h-2 rounded-full" 
-                                             style="width: {{ (scores.teaching_potential / 5 * 100)|round }}%">
+                                        <div class="bg-blue-600 h-2 rounded-full"
+                                            style="width: {{ (scores.teaching_potential / 5 * 100)|round }}%">
                                         </div>
                                     </div>
                                     <span class="ml-2 text-xs">{{ scores.teaching_potential }}/5</span>
@@ -86,8 +87,8 @@
                                 <div class="flex items-center text-sm">
                                     <span class="text-gray-500 w-32">Technical:</span>
                                     <div class="w-24 bg-gray-200 rounded-full h-2">
-                                        <div class="bg-blue-600 h-2 rounded-full" 
-                                             style="width: {{ (scores.technical_skills / 5 * 100)|round }}%">
+                                        <div class="bg-blue-600 h-2 rounded-full"
+                                            style="width: {{ (scores.technical_skills / 5 * 100)|round }}%">
                                         </div>
                                     </div>
                                     <span class="ml-2 text-xs">{{ scores.technical_skills }}/5</span>
@@ -96,7 +97,8 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="text-sm">
-                                <p class="font-medium text-gray-700">Average Score: {{ "%.1f"|format(rec.average_score) }}/5</p>
+                                <p class="font-medium text-gray-700">Average Score: {{ "%.1f"|format(rec.average_score)
+                                    }}/5</p>
                                 <p class="text-gray-500 mt-1">Recommended by {{ rec.reviewer_name }}</p>
                             </div>
                         </td>
@@ -106,22 +108,24 @@
                                 {% elif rec.application_status == 'Accepted' %}bg-green-100 text-green-800
                                 {% elif rec.application_status == 'Rejected' %}bg-red-100 text-red-800
                                 {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                {{ rec.application_status }}
+                                {{ rec.application_status or 'Pending' }}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-sm">
-                            {% if rec.application_status not in ['Selected', 'Accepted', 'Rejected'] 
+                            {% if rec.application_status not in ['Selected', 'Accepted', 'Rejected']
                             and course.ta_requirements.number_needed > current_assignments|length %}
-                            <form action="{{ url_for('committee.select_ta', course_id=course.id, application_id=rec.application_id) }}" method="post">
-                                <button type="submit" 
-                                        onclick="return confirm('Are you sure you want to select this applicant as TA?')"
-                                        class="text-blue-600 hover:text-blue-900">
+                            <form
+                                action="{{ url_for('committee.select_ta', course_id=course.id, application_id=rec.application_id) }}"
+                                method="post">
+                                <button type="submit"
+                                    onclick="return confirm('Are you sure you want to select this applicant as TA?')"
+                                    class="text-blue-600 hover:text-blue-900">
                                     Select as TA
                                 </button>
                             </form>
                             {% endif %}
                             <button onclick="viewApplication('{{ rec.application_id }}')"
-                                    class="ml-3 text-gray-600 hover:text-gray-900">
+                                class="ml-3 text-gray-600 hover:text-gray-900">
                                 View Application
                             </button>
                         </td>
@@ -139,40 +143,22 @@
     </div>
 </div>
 
-<!-- Application Details Modal -->
-<div id="applicationModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-3/4 shadow-lg rounded-md bg-white">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Application Details</h3>
-            <button onclick="closeModal('applicationModal')" class="text-gray-400 hover:text-gray-500">
-                <span class="sr-only">Close</span>
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-        <div id="applicationContent" class="mt-4">
-            <!-- Content will be loaded dynamically -->
-        </div>
-    </div>
-</div>
-
 <script>
-function viewApplication(applicationId) {
-    const modal = document.getElementById('applicationModal');
-    const content = document.getElementById('applicationContent');
-    modal.classList.remove('hidden');
-    content.innerHTML = 'Loading application details...';
-    
-    fetch(`/committee/api/application/${applicationId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch application details');
-            }
-            return response.json();
-        })
-        .then(data => {
-            content.innerHTML = `
+    function viewApplication(applicationId) {
+        const modal = document.getElementById('applicationModal');
+        const content = document.getElementById('applicationContent');
+        modal.classList.remove('hidden');
+        content.innerHTML = 'Loading application details...';
+
+        fetch(`/committee/api/application/${applicationId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch application details');
+                }
+                return response.json();
+            })
+            .then(data => {
+                content.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <h4 class="font-medium text-gray-900">Applicant Information</h4>
@@ -225,35 +211,35 @@ function viewApplication(applicationId) {
                     </div>
                 ` : ''}
             `;
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            content.innerHTML = 'Error loading application details.';
-        });
-}
-
-function getStatusColor(status) {
-    switch (status) {
-        case 'Selected':
-            return 'bg-yellow-100 text-yellow-800';
-        case 'Accepted':
-            return 'bg-green-100 text-green-800';
-        case 'Rejected':
-            return 'bg-red-100 text-red-800';
-        default:
-            return 'bg-gray-100 text-gray-800';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                content.innerHTML = 'Error loading application details.';
+            });
     }
-}
 
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-}
-
-// Close modals when clicking outside
-window.onclick = function(event) {
-    if (event.target.classList.contains('fixed')) {
-        event.target.classList.add('hidden');
+    function getStatusColor(status) {
+        switch (status) {
+            case 'Selected':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'Accepted':
+                return 'bg-green-100 text-green-800';
+            case 'Rejected':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
     }
-}
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+    }
+
+    // Close modals when clicking outside
+    window.onclick = function (event) {
+        if (event.target.classList.contains('fixed')) {
+            event.target.classList.add('hidden');
+        }
+    }
 </script>
 {% endblock %}
