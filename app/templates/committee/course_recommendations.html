@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Course Recommendations - {{ course.course_code }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Course Header -->
+    <div class="mb-6 flex justify-between items-start">
+        <div>
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-bold">{{ course.course_code }} - {{ course.name }}</h1>
+                <span class="px-3 py-1 rounded-full text-sm font-medium 
+                    {% if course.ta_requirements.number_needed > current_assignments|length %}
+                        bg-yellow-100 text-yellow-800
+                    {% else %}
+                        bg-green-100 text-green-800
+                    {% endif %}">
+                    {{ current_assignments|length }}/{{ course.ta_requirements.number_needed }} TAs Assigned
+                </span>
+            </div>
+            <p class="text-gray-600 mt-2">Department: {{ course.department_name }} | Semester: {{ course.semester }}</p>
+        </div>
+        <a href="{{ url_for('committee.view_courses') }}" 
+           class="text-blue-600 hover:text-blue-800">← Back to Courses</a>
+    </div>
+
+    <!-- Course Requirements -->
+    <div class="bg-white rounded-lg shadow-lg mb-8">
+        <div class="p-6">
+            <h2 class="text-lg font-semibold mb-4">Course Requirements</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500">TA Requirements</h3>
+                    <ul class="mt-2 space-y-2">
+                        <li class="text-sm">Number of TAs needed: {{ course.ta_requirements.number_needed }}</li>
+                        <li class="text-sm">Hours per week: {{ course.ta_requirements.hours_per_week }}</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500">Required Skills</h3>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        {% for skill in course.ta_requirements.required_skills %}
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {{ skill }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Assignments -->
+    {% if current_assignments %}
+    <div class="bg-white rounded-lg shadow-lg mb-8">
+        <div class="p-6">
+            <h2 class="text-lg font-semibold mb-4">Current TA Assignments</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for assignment in current_assignments.values() %}
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <div class="font-medium">{{ assignment.ta_name }}</div>
+                    <div class="text-sm text-gray-500">Status: {{ assignment.status }}</div>
+                    <div class="text-sm text-gray-500">Assigned: {{ assignment.assigned_at|datetime }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recommendations -->
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold">Recommendations</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Applicant
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Evaluation Scores
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Staff Review
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for rec in recommendations %}
+                    <tr>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">{{ rec.applicant_name }}</div>
+                            <div class="text-sm text-gray-500">{{ rec.applicant_email }}</div>
+                            <div class="mt-1">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                    GPA: {{ rec.gpa }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="space-y-2">
+                                {% set scores = rec.evaluation_scores %}
+                                <div class="flex items-center text-sm">
+                                    <span class="text-gray-500 w-32">Academic:</span>
+                                    <div class="w-24 bg-gray-200 rounded-full h-2">
+                                        <div class="bg-blue-600 h-2 rounded-full" 
+                                             style="width: {{ (scores.academic_strength / 5 * 100)|round }}%">
+                                        </div>
+                                    </div>
+                                    <span class="ml-2 text-xs">{{ scores.academic_strength }}/5</span>
+                                </div>
+                                <div class="flex items-center text-sm">
+                                    <span class="text-gray-500 w-32">Teaching:</span>
+                                    <div class="w-24 bg-gray-200 rounded-full h-2">
+                                        <div class="bg-blue-600 h-2 rounded-full" 
+                                             style="width: {{ (scores.teaching_potential / 5 * 100)|round }}%">
+                                        </div>
+                                    </div>
+                                    <span class="ml-2 text-xs">{{ scores.teaching_potential }}/5</span>
+                                </div>
+                                <div class="flex items-center text-sm">
+                                    <span class="text-gray-500 w-32">Technical:</span>
+                                    <div class="w-24 bg-gray-200 rounded-full h-2">
+                                        <div class="bg-blue-600 h-2 rounded-full" 
+                                             style="width: {{ (scores.technical_skills / 5 * 100)|round }}%">
+                                        </div>
+                                    </div>
+                                    <span class="ml-2 text-xs">{{ scores.technical_skills }}/5</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm">
+                                <p class="font-medium text-gray-700">Average Score: {{ "%.1f"|format(rec.average_score) }}/5</p>
+                                <p class="text-gray-500 mt-1">Recommended by {{ rec.reviewer_name }}</p>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                {% if rec.application_status == 'Selected' %}bg-yellow-100 text-yellow-800
+                                {% elif rec.application_status == 'Accepted' %}bg-green-100 text-green-800
+                                {% elif rec.application_status == 'Rejected' %}bg-red-100 text-red-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ rec.application_status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                            {% if rec.application_status not in ['Selected', 'Accepted', 'Rejected'] 
+                               and course.ta_requirements.number_needed > current_assignments|length %}
+                            <form method="POST" action="{{ url_for('committee.select_ta', course_id=course.id, application_id=rec.application_id) }}"
+                                  class="inline">
+                                <button type="submit" onclick="return confirm('Are you sure you want to select this applicant as TA?')"
+                                        class="text-blue-600 hover:text-blue-900">
+                                    Select as TA
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button onclick="viewApplication('{{ rec.application_id }}')"
+                                    class="ml-3 text-gray-600 hover:text-gray-900">
+                                View Application
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                            No recommendations found for this course.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Application Details Modal -->
+<div id="applicationModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-3/4 shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Application Details</h3>
+            <button onclick="closeModal('applicationModal')" class="text-gray-400 hover:text-gray-500">
+                <span class="sr-only">Close</span>
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="applicationContent" class="mt-4">
+            <!-- Content will be loaded dynamically -->
+        </div>
+    </div>
+</div>
+
+<script>
+function viewApplication(applicationId) {
+    const modal = document.getElementById('applicationModal');
+    const content = document.getElementById('applicationContent');
+    modal.classList.remove('hidden');
+    content.innerHTML = 'Loading application details...';
+    
+    // Fetch application details
+    fetch(`/committee/api/application/${applicationId}`)
+        .then(response => response.json())
+        .then(data => {
+            content.innerHTML = `
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-medium text-gray-900">Applicant Information</h4>
+                        <p class="mt-2">Name: ${data.applicant_name}</p>
+                        <p>Email: ${data.applicant_email}</p>
+                        <p>GPA: ${data.gpa}</p>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900">Previous Experience</h4>
+                        <div class="mt-2">${data.previous_experience || 'No previous experience'}</div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h4 class="font-medium text-gray-900">Additional Information</h4>
+                    <p class="mt-2">${data.additional_info || 'No additional information provided'}</p>
+                </div>
+            `;
+        })
+        .catch(error => {
+            content.innerHTML = 'Error loading application details.';
+        });
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    if (event.target.classList.contains('fixed')) {
+        event.target.classList.add('hidden');
+    }
+}
+</script>
+{% endblock %}

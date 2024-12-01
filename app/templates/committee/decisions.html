@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}TA Selection Decisions{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">TA Selection Decisions</h1>
+
+    <!-- Status Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Total Selections</h3>
+            <p class="mt-2 text-2xl font-bold text-gray-900">
+                {{ applications|selectattr('status', 'equalto', 'Selected')|list|length +
+                   applications|selectattr('status', 'equalto', 'Accepted')|list|length +
+                   applications|selectattr('status', 'equalto', 'Rejected')|list|length }}
+            </p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Pending Response</h3>
+            <p class="mt-2 text-2xl font-bold text-yellow-600">
+                {{ applications|selectattr('status', 'equalto', 'Selected')|list|length }}
+            </p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Accepted</h3>
+            <p class="mt-2 text-2xl font-bold text-green-600">
+                {{ applications|selectattr('status', 'equalto', 'Accepted')|list|length }}
+            </p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Rejected</h3>
+            <p class="mt-2 text-2xl font-bold text-red-600">
+                {{ applications|selectattr('status', 'equalto', 'Rejected')|list|length }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Decisions Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-900">Selection Decisions</h2>
+                <div class="flex space-x-4">
+                    <select id="statusFilter" onchange="filterTable()" 
+                            class="rounded-lg border-gray-300 text-sm">
+                        <option value="all">All Statuses</option>
+                        <option value="Selected">Pending Response</option>
+                        <option value="Accepted">Accepted</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Applicant Details
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Course
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Decision Timeline
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for app in applications %}
+                    <tr class="decision-row" data-status="{{ app.status }}">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ app.applicant_name }}</div>
+                                    <div class="text-sm text-gray-500">{{ app.applicant_email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">{{ app.course_code }}</div>
+                            <div class="text-sm text-gray-500">{{ app.course_name }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-500">
+                                <div>Selected: {{ app.selected_date|datetime }}</div>
+                                {% if app.response_due_date %}
+                                <div class="mt-1">
+                                    Due: {{ app.response_due_date|datetime }}
+                                    {% if app.status == 'Selected' %}
+                                        {% set days_left = ((app.response_due_date|datetime_obj - now).days) %}
+                                        <span class="ml-2 px-2 py-0.5 rounded-full text-xs
+                                            {% if days_left <= 1 %}bg-red-100 text-red-800
+                                            {% elif days_left <= 3 %}bg-yellow-100 text-yellow-800
+                                            {% else %}bg-green-100 text-green-800{% endif %}">
+                                            {{ days_left }} day(s) left
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% if app.response_date %}
+                                <div class="mt-1">
+                                    Responded: {{ app.response_date|datetime }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                {% if app.status == 'Selected' %}bg-yellow-100 text-yellow-800
+                                {% elif app.status == 'Accepted' %}bg-green-100 text-green-800
+                                {% elif app.status == 'Rejected' %}bg-red-100 text-red-800{% endif %}">
+                                {{ app.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                            {% if app.status == 'Rejected' %}
+                            <a href="{{ url_for('committee.course_recommendations', course_id=app.course_id) }}"
+                               class="text-blue-600 hover:text-blue-900">Select New TA</a>
+                            {% else %}
+                            <button onclick="viewDetails('{{ app.id }}')"
+                                    class="text-blue-600 hover:text-blue-900">View Details</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                            No decisions found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Decision Details Modal -->
+<div id="decisionModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-3/4 max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Decision Details</h3>
+            <button onclick="closeModal('decisionModal')" class="text-gray-400 hover:text-gray-500">
+                <span class="sr-only">Close</span>
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="decisionContent" class="space-y-4">
+            <!-- Content will be loaded dynamically -->
+        </div>
+    </div>
+</div>
+
+<script>
+function filterTable() {
+    const status = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll('.decision-row');
+    
+    rows.forEach(row => {
+        if (status === 'all' || row.dataset.status === status) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function viewDetails(applicationId) {
+    const modal = document.getElementById('decisionModal');
+    const content = document.getElementById('decisionContent');
+    modal.classList.remove('hidden');
+    content.innerHTML = 'Loading details...';
+    
+    // Fetch decision details
+    fetch(`/committee/api/application/${applicationId}/decision`)
+        .then(response => response.json())
+        .then(data => {
+            content.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700">Selection Details</h4>
+                        <p class="text-sm mt-1">Selected by: ${data.selected_by}</p>
+                        <p class="text-sm">Selection date: ${data.selected_date}</p>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700">Response Details</h4>
+                        <p class="text-sm mt-1">Status: ${data.status}</p>
+                        ${data.response_date ? `<p class="text-sm">Response date: ${data.response_date}</p>` : ''}
+                    </div>
+                </div>
+                ${data.response_comments ? `
+                    <div class="mt-4">
+                        <h4 class="text-sm font-medium text-gray-700">Response Comments</h4>
+                        <p class="text-sm mt-1">${data.response_comments}</p>
+                    </div>
+                ` : ''}
+                <div class="mt-4">
+                    <h4 class="text-sm font-medium text-gray-700">Timeline</h4>
+                    <div class="mt-2 space-y-2">
+                        ${data.timeline.map(item => `
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full bg-gray-400"></div>
+                                <div class="ml-3">
+                                    <p class="text-sm">${item.action}</p>
+                                    <p class="text-xs text-gray-500">${item.date}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            content.innerHTML = 'Error loading decision details.';
+        });
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    if (event.target.classList.contains('fixed')) {
+        event.target.classList.add('hidden');
+    }
+}
+</script>
+{% endblock %}

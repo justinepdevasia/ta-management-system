@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Course Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold mb-6">Course Management</h1>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                    <select name="department" class="w-full rounded-lg border-gray-300">
+                        <option value="">All Departments</option>
+                        {% for dept_id, dept in departments.items() %}
+                        <option value="{{ dept_id }}" {% if request.args.get('department') == dept_id %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Semester</label>
+                    <select name="semester" class="w-full rounded-lg border-gray-300">
+                        <option value="">All Semesters</option>
+                        <option value="Fall 2024" {% if request.args.get('semester') == 'Fall 2024' %}selected{% endif %}>Fall 2024</option>
+                        <option value="Spring 2025" {% if request.args.get('semester') == 'Spring 2025' %}selected{% endif %}>Spring 2025</option>
+                        <option value="Summer 2025" {% if request.args.get('semester') == 'Summer 2025' %}selected{% endif %}>Summer 2025</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Courses List -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Course Information
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                TA Requirements
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Current Status
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Recommendations
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for course_id, course in courses.items() %}
+                        <tr>
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900">{{ course.course_code }}</div>
+                                <div class="text-sm text-gray-500">{{ course.name }}</div>
+                                <div class="mt-1">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        {{ course.department_name }}
+                                    </span>
+                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        {{ course.semester }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900">
+                                    <div>Needed: {{ course.ta_requirements.number_needed }} TA(s)</div>
+                                    <div>Hours: {{ course.ta_requirements.hours_per_week }} per week</div>
+                                </div>
+                                {% if course.ta_requirements.required_skills %}
+                                <div class="mt-2">
+                                    <div class="text-xs text-gray-500">Required Skills:</div>
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                        {% for skill in course.ta_requirements.required_skills %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ skill }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm">
+                                    <div class="flex items-center">
+                                        <span class="font-medium">Current TAs:</span>
+                                        <span class="ml-2">{{ course.current_tas }}/{{ course.ta_requirements.number_needed }}</span>
+                                    </div>
+                                    <div class="mt-2">
+                                        {% set remaining = course.ta_requirements.number_needed - course.current_tas %}
+                                        {% if remaining > 0 %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            Needs {{ remaining }} more TA(s)
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            All positions filled
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm">
+                                    <div class="font-medium text-gray-900">{{ course.recommendation_count }} Recommendations</div>
+                                    {% if course.recommendation_count > 0 %}
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        From {{ course.recommendation_count }} staff member(s)
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm">
+                                <div class="flex flex-col space-y-2">
+                                    <a href="{{ url_for('committee.course_recommendations', course_id=course_id) }}"
+                                       class="text-blue-600 hover:text-blue-900">View Recommendations</a>
+                                    {% if course.current_tas > 0 %}
+                                    <button onclick="viewAssignments('{{ course_id }}')"
+                                            class="text-green-600 hover:text-green-900">Current Assignments</button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No courses found matching the current filters.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current Assignments Modal -->
+<div id="assignmentsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Current TA Assignments</h3>
+            <button onclick="closeModal('assignmentsModal')" class="text-gray-400 hover:text-gray-500">
+                <span class="sr-only">Close</span>
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="assignmentsContent" class="space-y-4">
+            <!-- Content will be populated dynamically -->
+        </div>
+    </div>
+</div>
+
+<script>
+function viewAssignments(courseId) {
+    // In a real application, you would fetch the assignments data here
+    // For now, we'll just show a placeholder
+    document.getElementById('assignmentsModal').classList.remove('hidden');
+    document.getElementById('assignmentsContent').innerHTML = 'Loading assignments...';
+    
+    // Example of how to fetch assignments:
+    fetch(`/committee/api/course/${courseId}/assignments`)
+        .then(response => response.json())
+        .then(data => {
+            let content = '';
+            data.assignments.forEach(assignment => {
+                content += `
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <div class="font-medium">${assignment.ta_name}</div>
+                        <div class="text-sm text-gray-500">Assigned: ${assignment.assigned_date}</div>
+                        <div class="text-sm text-gray-500">Status: ${assignment.status}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('assignmentsContent').innerHTML = content;
+        })
+        .catch(error => {
+            document.getElementById('assignmentsContent').innerHTML = 'Error loading assignments.';
+        });
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    if (event.target.classList.contains('fixed')) {
+        event.target.classList.add('hidden');
+    }
+}
+</script>
+{% endblock %}

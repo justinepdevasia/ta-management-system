@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Committee Reports{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">Selection Reports</h1>
+
+    <!-- Overview Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Total Selections</h3>
+            <p class="mt-2 text-2xl font-bold text-gray-900">{{ stats.total_selected }}</p>
+            <p class="mt-1 text-sm text-gray-500">Made this semester</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Acceptance Rate</h3>
+            <p class="mt-2 text-2xl font-bold text-green-600">{{ "%.1f"|format(stats.acceptance_rate) }}%</p>
+            <p class="mt-1 text-sm text-gray-500">Of total offers</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Average Response Time</h3>
+            <p class="mt-2 text-2xl font-bold text-blue-600">{{ "%.1f"|format(stats.avg_response_time) }}</p>
+            <p class="mt-1 text-sm text-gray-500">Days to respond</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Current Positions</h3>
+            <p class="mt-2 text-2xl font-bold text-purple-600">{{ stats.total_accepted }}</p>
+            <p class="mt-1 text-sm text-gray-500">Filled positions</p>
+        </div>
+    </div>
+
+    <!-- Department Statistics -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Department Chart -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Selections by Department</h3>
+            <div class="h-80">
+                <canvas id="departmentChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Department Table -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Department Breakdown</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Selected</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Accepted</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% for dept, data in stats.by_department.items() %}
+                        <tr>
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ dept }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">{{ data.selected }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">{{ data.accepted }}</td>
+                            <td class="px-6 py-4">
+                                {% set rate = (data.accepted / data.selected * 100) if data.selected > 0 else 0 %}
+                                <div class="flex items-center">
+                                    <span class="text-sm text-gray-900">{{ "%.1f"|format(rate) }}%</span>
+                                    <div class="ml-2 w-16 bg-gray-200 rounded-full h-2">
+                                        <div class="bg-blue-600 h-2 rounded-full" style="width: {{ rate }}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Semester Analysis -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Semester Chart -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Selections by Semester</h3>
+            <div class="h-80">
+                <canvas id="semesterChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Response Time Distribution -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Response Time Distribution</h3>
+            <div class="h-80">
+                <canvas id="responseTimeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Response Analysis -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Response Time Analysis</h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-500">Quick Responses (< 2 days)</div>
+                    <div class="mt-2 text-xl font-semibold">
+                        {{ stats.response_times|selectattr('days', 'lt', 2)|list|length }}
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-500">Average Responses (2-5 days)</div>
+                    <div class="mt-2 text-xl font-semibold">
+                        {{ stats.response_times|selectattr('days', 'ge', 2)|selectattr('days', 'le', 5)|list|length }}
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-500">Delayed Responses (> 5 days)</div>
+                    <div class="mt-2 text-xl font-semibold">
+                        {{ stats.response_times|selectattr('days', 'gt', 5)|list|length }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Department Chart
+const departmentData = {{ stats.by_department|tojson }};
+const deptCtx = document.getElementById('departmentChart').getContext('2d');
+new Chart(deptCtx, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(departmentData),
+        datasets: [{
+            label: 'Selected',
+            data: Object.values(departmentData).map(d => d.selected),
+            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+            borderColor: 'rgb(59, 130, 246)',
+            borderWidth: 1
+        }, {
+            label: 'Accepted',
+            data: Object.values(departmentData).map(d => d.accepted),
+            backgroundColor: 'rgba(16, 185, 129, 0.5)',
+            borderColor: 'rgb(16, 185, 129)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Semester Chart
+const semesterData = {{ stats.by_semester|tojson }};
+const semCtx = document.getElementById('semesterChart').getContext('2d');
+new Chart(semCtx, {
+    type: 'line',
+    data: {
+        labels: Object.keys(semesterData),
+        datasets: [{
+            label: 'Selections',
+            data: Object.values(semesterData).map(d => d.selected),
+            borderColor: 'rgb(59, 130, 246)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+
+// Response Time Distribution Chart
+const responseData = {{ stats.response_times|tojson }};
+const respCtx = document.getElementById('responseTimeChart').getContext('2d');
+new Chart(respCtx, {
+    type: 'histogram',
+    data: {
+        datasets: [{
+            label: 'Response Time Distribution',
+            data: responseData,
+            borderColor: 'rgb(59, 130, 246)',
+            backgroundColor: 'rgba(59, 130, 246, 0.5)'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Number of Responses'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Days to Respond'
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

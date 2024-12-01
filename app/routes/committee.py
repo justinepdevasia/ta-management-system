@@ -1,5 +1,3 @@
-# app/routes/committee.py
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from app.utils.decorators import login_required, role_required
 from app.utils.firebase import get_firebase
@@ -13,198 +11,204 @@ committee_bp = Blueprint('committee', __name__, url_prefix='/committee')
 def dashboard():
     _, _, db, _ = get_firebase()
     
-    # Get summary statistics
-    applications_pending = db.child("applications").order_by_child("status").equal_to("Reviewed").get().val() or {}
-    applications_decided = db.child("applications").order_by_child("status").equal_to("Decided").get().val() or {}
+    # Get courses needing TAs
+    courses = db.child("courses").get().val() or {}
+    courses_needing_tas = {k: v for k, v in courses.items() 
+                          if int(v.get('ta_requirements', {}).get('number_needed', 0)) > 
+                             len(db.child("ta_assignments").order_by_child("course_id").equal_to(k).get().val() or {})}
     
-    stats = {
-        'pending_review': len(applications_pending),
-        'decisions_made': len(applications_decided),
-        'total_applications': len(applications_pending) + len(applications_decided)
-    }
-    
-    # Get recent applications that need committee review
-    recent_applications = db.child("applications")\
+    # Get recent TA decisions
+    recent_decisions = db.child("applications")\
         .order_by_child("status")\
-        .equal_to("Reviewed")\
+        .start_at("Selected")\
+        .end_at("Selected\uf8ff")\
         .limit_to_last(5)\
         .get().val() or {}
     
+    stats = {
+        'courses_needing_tas': len(courses_needing_tas),
+        'pending_decisions': len([d for d in recent_decisions.values() if d['status'] == 'Selected']),
+        'accepted_offers': len([d for d in recent_decisions.values() if d['status'] == 'Accepted']),
+        'rejected_offers': len([d for d in recent_decisions.values() if d['status'] == 'Rejected'])
+    }
+    
     return render_template('committee/dashboard.html',
                          stats=stats,
-                         recent_applications=recent_applications)
+                         courses=courses_needing_tas,
+                         recent_decisions=recent_decisions)
 
-@committee_bp.route('/applications')
+@committee_bp.route('/courses')
 @login_required
 @role_required(['committee'])
-def view_applications():
+def view_courses():
     _, _, db, _ = get_firebase()
     
-    # Get filter parameters
-    status = request.args.get('status', 'Reviewed')
     department = request.args.get('department')
     semester = request.args.get('semester')
     
-    # Get applications based on filters
-    applications = db.child("applications").order_by_child("status").equal_to(status).get().val() or {}
-    
-    # Apply additional filters
-    if department or semester:
-        filtered_applications = {}
-        for app_id, app in applications.items():
-            if department and app.get('department') != department:
-                continue
-            if semester and app.get('semester') != semester:
-                continue
-            filtered_applications[app_id] = app
-        applications = filtered_applications
-    
-    # Get related data
+    # Get all courses with their TA requirements and current assignments
     courses = db.child("courses").get().val() or {}
+    
+    # Apply filters if provided
+    if department or semester:
+        filtered_courses = {}
+        for course_id, course in courses.items():
+            if department and course.get('department') != department:
+                continue
+            if semester and course.get('semester') != semester:
+                continue
+            filtered_courses[course_id] = course
+        courses = filtered_courses
+    
+    # Enrich course data with current TA assignments and recommendations
+    for course_id, course in courses.items():
+        # Get current TA assignments
+        assignments = db.child("ta_assignments")\
+            .order_by_child("course_id")\
+            .equal_to(course_id)\
+            .get().val() or {}
+        course['current_tas'] = len(assignments)
+        
+        # Get recommendations for this course
+        recommendations = db.child("recommendations")\
+            .order_by_child("course_id")\
+            .equal_to(course_id)\
+            .get().val() or {}
+        course['recommendation_count'] = len(recommendations)
+    
     departments = db.child("departments").get().val() or {}
     
-    return render_template('committee/applications.html',
-                         applications=applications,
+    return render_template('committee/courses.html',
                          courses=courses,
-                         departments=departments,
-                         current_filters={
-                             'status': status,
-                             'department': department,
-                             'semester': semester
-                         })
+                         departments=departments)
 
-@committee_bp.route('/application/<application_id>', methods=['GET', 'POST'])
+@committee_bp.route('/course/<course_id>/recommendations')
 @login_required
 @role_required(['committee'])
-def review_application(application_id):
+def course_recommendations(course_id):
     _, _, db, _ = get_firebase()
     
-    if request.method == 'POST':
-        try:
-            # Get form data
-            decision = request.form['decision']
-            assigned_courses = request.form.getlist('assigned_courses')
-            comments = request.form['comments']
-            
-            # Prepare decision data
-            decision_data = {
-                "committee_member_id": session['user_id'],
-                "decision": decision,
-                "assigned_courses": assigned_courses,
-                "comments": comments,
-                "created_at": datetime.now().isoformat()
-            }
-            
-            # Update application with decision
-            db.child("applications").child(application_id).update({
-                "status": "Decided",
-                "decision": decision,
-                "committee_decision": decision_data,
-                "updated_at": datetime.now().isoformat()
-            })
-            
-            # If approved, create TA assignments
-            if decision == 'approved':
-                for course_id in assigned_courses:
-                    assignment_data = {
-                        "application_id": application_id,
-                        "course_id": course_id,
-                        "ta_id": db.child("applications").child(application_id).get().val()['applicant_id'],
-                        "status": "Pending",
-                        "assigned_by": session['user_id'],
-                        "assigned_at": datetime.now().isoformat()
-                    }
-                    db.child("ta_assignments").push(assignment_data)
-            
-            flash('Decision recorded successfully!', 'success')
-            return redirect(url_for('committee.view_applications'))
-            
-        except Exception as e:
-            flash(f'Error recording decision: {str(e)}', 'error')
+    # Get course details
+    course = db.child("courses").child(course_id).get().val()
+    if not course:
+        flash('Course not found.', 'error')
+        return redirect(url_for('committee.view_courses'))
     
-    # Get application data
-    application = db.child("applications").child(application_id).get().val()
-    if not application:
-        flash('Application not found.', 'error')
-        return redirect(url_for('committee.view_applications'))
-    
-    # Get related data
-    courses = db.child("courses").get().val() or {}
-    applicant = db.child("users").child(application['applicant_id']).get().val() or {}
-    staff_review = application.get('staff_review', {})
-    
-    return render_template('committee/review_application.html',
-                         application=application,
-                         courses=courses,
-                         applicant=applicant,
-                         staff_review=staff_review)
-
-@committee_bp.route('/meetings')
-@login_required
-@role_required(['committee'])
-def meetings():
-    _, _, db, _ = get_firebase()
-    
-    # Get upcoming and past meetings
-    meetings = db.child("committee_meetings").get().val() or {}
-    
-    # Split meetings into upcoming and past
-    upcoming_meetings = {}
-    past_meetings = {}
-    current_date = datetime.now()
-    
-    for meeting_id, meeting in meetings.items():
-        meeting_date = datetime.fromisoformat(meeting['date'])
-        if meeting_date > current_date:
-            upcoming_meetings[meeting_id] = meeting
-        else:
-            past_meetings[meeting_id] = meeting
-    
-    return render_template('committee/meetings.html',
-                         upcoming_meetings=upcoming_meetings,
-                         past_meetings=past_meetings)
-
-@committee_bp.route('/meeting/<meeting_id>', methods=['GET', 'POST'])
-@login_required
-@role_required(['committee'])
-def meeting_details(meeting_id):
-    _, _, db, _ = get_firebase()
-    
-    if request.method == 'POST':
-        try:
-            # Update meeting notes
-            notes = request.form['notes']
-            decisions = request.form.getlist('decisions')
-            
-            update_data = {
-                "notes": notes,
-                "decisions": decisions,
-                "updated_by": session['user_id'],
-                "updated_at": datetime.now().isoformat()
-            }
-            
-            db.child("committee_meetings").child(meeting_id).update(update_data)
-            flash('Meeting notes updated successfully!', 'success')
-            
-        except Exception as e:
-            flash(f'Error updating meeting notes: {str(e)}', 'error')
-    
-    # Get meeting data
-    meeting = db.child("committee_meetings").child(meeting_id).get().val()
-    
-    if not meeting:
-        flash('Meeting not found.', 'error')
-        return redirect(url_for('committee.meetings'))
-    
-    # Get applications to be reviewed in this meeting
-    applications_for_review = db.child("applications")\
-        .order_by_child("status")\
-        .equal_to("Reviewed")\
+    # Get current TA assignments
+    current_assignments = db.child("ta_assignments")\
+        .order_by_child("course_id")\
+        .equal_to(course_id)\
         .get().val() or {}
     
-    return render_template('committee/meeting_details.html',
-                         meeting=meeting,
-                         applications=applications_for_review)
+    # Get recommendations for this course
+    recommendations = db.child("recommendations")\
+        .order_by_child("course_id")\
+        .equal_to(course_id)\
+        .get().val() or {}
+    
+    # Enrich recommendations with applicant data
+    enriched_recommendations = []
+    for rec_id, rec in recommendations.items():
+        application = db.child("applications").child(rec['application_id']).get().val()
+        applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
+        
+        if application and applicant:
+            # Skip if applicant is already assigned to this course
+            if any(a.get('ta_id') == application['applicant_id'] for a in current_assignments.values()):
+                continue
+                
+            enriched_recommendations.append({
+                'id': rec_id,
+                **rec,
+                'applicant_name': applicant.get('name'),
+                'applicant_email': applicant.get('email'),
+                'application_status': application.get('status'),
+                'gpa': application.get('gpa'),
+                'evaluation_scores': rec.get('evaluation_scores', {})
+            })
+    
+    # Sort recommendations by average evaluation score
+    for rec in enriched_recommendations:
+        scores = rec['evaluation_scores']
+        rec['average_score'] = sum(scores.values()) / len(scores) if scores else 0
+    
+    enriched_recommendations.sort(key=lambda x: x['average_score'], reverse=True)
+    
+    return render_template('committee/course_recommendations.html',
+                         course=course,
+                         recommendations=enriched_recommendations,
+                         current_assignments=current_assignments)
+
+@committee_bp.route('/course/<course_id>/select-ta/<application_id>', methods=['POST'])
+@login_required
+@role_required(['committee'])
+def select_ta(course_id, application_id):
+    _, _, db, _ = get_firebase()
+    
+    try:
+        # Verify course exists and needs TAs
+        course = db.child("courses").child(course_id).get().val()
+        if not course:
+            return jsonify({'error': 'Course not found'}), 404
+        
+        current_assignments = db.child("ta_assignments")\
+            .order_by_child("course_id")\
+            .equal_to(course_id)\
+            .get().val() or {}
+            
+        if len(current_assignments) >= int(course['ta_requirements']['number_needed']):
+            return jsonify({'error': 'Course has reached maximum number of TAs'}), 400
+        
+        # Get application
+        application = db.child("applications").child(application_id).get().val()
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+        
+        # Update application status
+        db.child("applications").child(application_id).update({
+            "status": "Selected",
+            "selected_by": session['user_id'],
+            "selected_date": datetime.now().isoformat(),
+            "response_due_date": (datetime.now() + timedelta(days=7)).isoformat()
+        })
+        
+        flash('TA selected successfully. Waiting for applicant response.', 'success')
+        return redirect(url_for('committee.course_recommendations', course_id=course_id))
+        
+    except Exception as e:
+        flash(f'Error selecting TA: {str(e)}', 'error')
+        return redirect(url_for('committee.course_recommendations', course_id=course_id))
+
+@committee_bp.route('/decisions')
+@login_required
+@role_required(['committee'])
+def view_decisions():
+    _, _, db, _ = get_firebase()
+    
+    # Get all applications with decisions
+    applications = db.child("applications")\
+        .order_by_child("status")\
+        .start_at("Selected")\
+        .get().val() or {}
+    
+    # Enrich application data
+    enriched_applications = []
+    for app_id, app in applications.items():
+        applicant = db.child("users").child(app['applicant_id']).get().val()
+        course = db.child("courses").child(app['course_id']).get().val()
+        
+        if applicant and course:
+            enriched_applications.append({
+                'id': app_id,
+                **app,
+                'applicant_name': applicant.get('name'),
+                'applicant_email': applicant.get('email'),
+                'course_code': course.get('course_code'),
+                'course_name': course.get('name')
+            })
+    
+    return render_template('committee/decisions.html',
+                         applications=enriched_applications)
 
 @committee_bp.route('/reports')
 @login_required
@@ -212,57 +216,64 @@ def meeting_details(meeting_id):
 def reports():
     _, _, db, _ = get_firebase()
     
-    # Generate committee decision statistics
-    decisions = db.child("applications")\
-        .order_by_child("status")\
-        .equal_to("Decided")\
-        .get().val() or {}
-    
+    # Generate statistics for committee decisions and responses
     stats = {
-        'total_decisions': len(decisions),
-        'approvals': sum(1 for d in decisions.values() if d.get('decision') == 'approved'),
-        'rejections': sum(1 for d in decisions.values() if d.get('decision') == 'rejected'),
         'by_department': {},
-        'by_semester': {}
+        'by_semester': {},
+        'response_times': [],
+        'acceptance_rate': 0,
+        'total_selected': 0,
+        'total_accepted': 0,
+        'total_rejected': 0
     }
     
-    # Calculate departmental and semester statistics
-    for decision in decisions.values():
-        dept = decision.get('department', 'Unknown')
-        semester = decision.get('semester', 'Unknown')
+    # Get all applications with decisions
+    applications = db.child("applications")\
+        .order_by_child("status")\
+        .start_at("Selected")\
+        .get().val() or {}
+    
+    for app in applications.values():
+        stats['total_selected'] += 1
+        if app['status'] == 'Accepted':
+            stats['total_accepted'] += 1
+        elif app['status'] == 'Rejected':
+            stats['total_rejected'] += 1
         
-        if dept not in stats['by_department']:
-            stats['by_department'][dept] = {'approved': 0, 'rejected': 0}
-        if semester not in stats['by_semester']:
-            stats['by_semester'][semester] = {'approved': 0, 'rejected': 0}
+        # Calculate response time if available
+        if app.get('selected_date') and app.get('response_date'):
+            selected_date = datetime.fromisoformat(app['selected_date'])
+            response_date = datetime.fromisoformat(app['response_date'])
+            response_time = (response_date - selected_date).days
+            stats['response_times'].append(response_time)
         
-        decision_type = 'approved' if decision.get('decision') == 'approved' else 'rejected'
-        stats['by_department'][dept][decision_type] += 1
-        stats['by_semester'][semester][decision_type] += 1
+        # Aggregate by department and semester
+        course = db.child("courses").child(app['course_id']).get().val()
+        if course:
+            dept = course.get('department', 'Unknown')
+            semester = course.get('semester', 'Unknown')
+            
+            if dept not in stats['by_department']:
+                stats['by_department'][dept] = {'selected': 0, 'accepted': 0, 'rejected': 0}
+            if semester not in stats['by_semester']:
+                stats['by_semester'][semester] = {'selected': 0, 'accepted': 0, 'rejected': 0}
+            
+            stats['by_department'][dept]['selected'] += 1
+            stats['by_semester'][semester]['selected'] += 1
+            
+            if app['status'] == 'Accepted':
+                stats['by_department'][dept]['accepted'] += 1
+                stats['by_semester'][semester]['accepted'] += 1
+            elif app['status'] == 'Rejected':
+                stats['by_department'][dept]['rejected'] += 1
+                stats['by_semester'][semester]['rejected'] += 1
+    
+    # Calculate acceptance rate
+    if stats['total_selected'] > 0:
+        stats['acceptance_rate'] = (stats['total_accepted'] / stats['total_selected']) * 100
+    
+    # Calculate average response time
+    if stats['response_times']:
+        stats['avg_response_time'] = sum(stats['response_times']) / len(stats['response_times'])
     
     return render_template('committee/reports.html', stats=stats)
-
-# API endpoints for AJAX requests
-@committee_bp.route('/api/application-status', methods=['POST'])
-@login_required
-@role_required(['committee'])
-def update_application_status():
-    _, _, db, _ = get_firebase()
-    
-    try:
-        application_id = request.json['application_id']
-        new_status = request.json['status']
-        
-        if new_status not in ['Reviewed', 'Decided']:
-            return jsonify({'error': 'Invalid status'}), 400
-        
-        db.child("applications").child(application_id).update({
-            "status": new_status,
-            "updated_by": session['user_id'],
-            "updated_at": datetime.now().isoformat()
-        })
-        
-        return jsonify({'success': True})
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
