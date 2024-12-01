@@ -154,9 +154,16 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 text-sm">
+
+                            <div class="hidden">
+                                Debug: Course ID: {{ course.id }}, Application ID: {{ rec.application_id }}
+                            </div>
+
                             {% if rec.application_status not in ['Selected', 'Accepted', 'Rejected'] 
-                               and course.ta_requirements.number_needed > current_assignments|length %}
+                            and course.ta_requirements.number_needed > current_assignments|length %}
                             <button onclick="selectTA('{{ course.id }}', '{{ rec.application_id }}')"
+                                    data-course-id="{{ course.id }}"
+                                    data-application-id="{{ rec.application_id }}"
                                     class="text-blue-600 hover:text-blue-900">
                                 Select as TA
                             </button>
