@@ -276,6 +276,52 @@ def api_select_ta():
             'error': str(e)
         }), 500
 
+@committee_bp.route('/api/application/<application_id>', methods=['GET'])
+@login_required
+@role_required(['committee'])
+def api_get_application(application_id):
+    _, _, db, _ = get_firebase()
+    
+    try:
+        # Get application details
+        application = db.child("applications").child(application_id).get().val()
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+        
+        # Get applicant details
+        applicant = db.child("users").child(application.get('applicant_id')).get().val()
+        if not applicant:
+            return jsonify({'error': 'Applicant not found'}), 404
+        
+        # Format previous experience
+        previous_experience = ""
+        if application.get('previous_experience'):
+            previous_courses = application.get('previous_courses', [])
+            previous_dates = application.get('previous_dates', [])
+            for i in range(len(previous_courses)):
+                previous_experience += f"<div class='mb-2'>"
+                previous_experience += f"<p class='font-medium'>{previous_courses[i]}</p>"
+                previous_experience += f"<p class='text-sm text-gray-600'>{previous_dates[i]}</p>"
+                previous_experience += "</div>"
+        
+        # Prepare response data
+        response_data = {
+            'applicant_name': applicant.get('name'),
+            'applicant_email': applicant.get('email'),
+            'gpa': application.get('gpa'),
+            'previous_experience': previous_experience,
+            'additional_info': application.get('additional_skills', ''),
+            'research_interests': application.get('research_interests', ''),
+            'cv_url': application.get('cv_url', ''),
+            'status': application.get('status'),
+            'submission_date': application.get('submission_date')
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @committee_bp.route('/reports')
 @login_required
 @role_required(['committee'])

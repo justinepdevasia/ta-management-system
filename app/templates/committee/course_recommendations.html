@@ -236,32 +236,78 @@ function viewApplication(applicationId) {
     modal.classList.remove('hidden');
     content.innerHTML = 'Loading application details...';
     
-    // Fetch application details
     fetch(`/committee/api/application/${applicationId}`)
         .then(response => response.json())
         .then(data => {
             content.innerHTML = `
-                <div class="grid grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <h4 class="font-medium text-gray-900">Applicant Information</h4>
-                        <p class="mt-2">Name: ${data.applicant_name}</p>
-                        <p>Email: ${data.applicant_email}</p>
-                        <p>GPA: ${data.gpa}</p>
+                        <div class="mt-2 space-y-2">
+                            <p class="text-sm"><span class="font-medium">Name:</span> ${data.applicant_name}</p>
+                            <p class="text-sm"><span class="font-medium">Email:</span> ${data.applicant_email}</p>
+                            <p class="text-sm"><span class="font-medium">GPA:</span> ${data.gpa}</p>
+                            <p class="text-sm"><span class="font-medium">Status:</span> 
+                                <span class="px-2 py-1 text-xs rounded-full ${getStatusColor(data.status)}">
+                                    ${data.status}
+                                </span>
+                            </p>
+                        </div>
                     </div>
+                    
                     <div>
                         <h4 class="font-medium text-gray-900">Previous Experience</h4>
-                        <div class="mt-2">${data.previous_experience || 'No previous experience'}</div>
+                        <div class="mt-2">
+                            ${data.previous_experience || '<p class="text-sm text-gray-500">No previous experience</p>'}
+                        </div>
                     </div>
                 </div>
-                <div class="mt-4">
-                    <h4 class="font-medium text-gray-900">Additional Information</h4>
-                    <p class="mt-2">${data.additional_info || 'No additional information provided'}</p>
+
+                <div class="mt-6">
+                    <h4 class="font-medium text-gray-900">Research Interests</h4>
+                    <p class="mt-2 text-sm">
+                        ${data.research_interests || 'No research interests specified'}
+                    </p>
                 </div>
+
+                <div class="mt-6">
+                    <h4 class="font-medium text-gray-900">Additional Skills</h4>
+                    <p class="mt-2 text-sm">
+                        ${data.additional_info || 'No additional skills specified'}
+                    </p>
+                </div>
+
+                ${data.cv_url ? `
+                    <div class="mt-6">
+                        <a href="${data.cv_url}" target="_blank" 
+                           class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                            <span>View CV</span>
+                            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </a>
+                    </div>
+                ` : ''}
             `;
         })
         .catch(error => {
+            console.error('Error:', error);
             content.innerHTML = 'Error loading application details.';
         });
+}
+
+function getStatusColor(status) {
+    switch (status) {
+        case 'Selected':
+            return 'bg-yellow-100 text-yellow-800';
+        case 'Accepted':
+            return 'bg-green-100 text-green-800';
+        case 'Rejected':
+            return 'bg-red-100 text-red-800';
+        default:
+            return 'bg-gray-100 text-gray-800';
+    }
 }
 
 function closeModal(modalId) {
