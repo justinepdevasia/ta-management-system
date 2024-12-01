@@ -224,6 +224,58 @@ def view_decisions():
     return render_template('committee/decisions.html',
                          applications=enriched_applications)
 
+@committee_bp.route('/api/select-ta', methods=['POST'])
+@login_required
+@role_required(['committee'])
+def api_select_ta():
+    _, _, db, _ = get_firebase()
+    
+    try:
+        data = request.get_json()
+        course_id = data.get('course_id')
+        application_id = data.get('application_id')
+        
+        # Verify course exists and needs TAs
+        course = db.child("courses").child(course_id).get().val()
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+        
+        current_assignments = db.child("ta_assignments")\
+            .order_by_child("course_id")\
+            .equal_to(course_id)\
+            .get().val() or {}
+            
+        if len(current_assignments) >= int(course['ta_requirements']['number_needed']):
+            return jsonify({
+                'success': False, 
+                'error': 'Course has reached maximum number of TAs'
+            }), 400
+        
+        # Get application
+        application = db.child("applications").child(application_id).get().val()
+        if not application:
+            return jsonify({'success': False, 'error': 'Application not found'}), 404
+        
+        # Update application status
+        db.child("applications").child(application_id).update({
+            "status": "Selected",
+            "selected_by": session['user_id'],
+            "selected_date": datetime.now().isoformat(),
+            "response_due_date": (datetime.now() + timedelta(days=7)).isoformat(),
+            "course_id": course_id  # Make sure to store the course_id
+        })
+        
+        return jsonify({
+            'success': True,
+            'message': 'TA selected successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @committee_bp.route('/reports')
 @login_required
 @role_required(['committee'])
