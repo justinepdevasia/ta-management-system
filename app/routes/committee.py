@@ -17,13 +17,30 @@ def dashboard():
                           if int(v.get('ta_requirements', {}).get('number_needed', 0)) > 
                              len(db.child("ta_assignments").order_by_child("course_id").equal_to(k).get().val() or {})}
     
-    # Get recent TA decisions
-    recent_decisions = db.child("applications")\
+    # Get recent TA decisions with enriched data
+    recent_decisions = {}
+    all_decisions = db.child("applications")\
         .order_by_child("status")\
         .start_at("Selected")\
         .end_at("Selected\uf8ff")\
         .limit_to_last(5)\
         .get().val() or {}
+        
+    for app_id, app in all_decisions.items():
+        # Get applicant details
+        applicant = db.child("users").child(app.get('applicant_id')).get().val()
+        # Get course details
+        course = db.child("courses").child(app.get('course_id')).get().val()
+        
+        if applicant and course:
+            recent_decisions[app_id] = {
+                **app,
+                'applicant_name': applicant.get('name'),
+                'applicant_email': applicant.get('email'),
+                'course_id': app.get('course_id'),
+                'course_code': course.get('course_code'),
+                'course_name': course.get('name')
+            }
     
     stats = {
         'courses_needing_tas': len(courses_needing_tas),
@@ -36,7 +53,6 @@ def dashboard():
                          stats=stats,
                          courses=courses_needing_tas,
                          recent_decisions=recent_decisions)
-
 @committee_bp.route('/courses')
 @login_required
 @role_required(['committee'])
@@ -89,45 +105,45 @@ def select_ta(course_id, application_id):
     _, _, db, _ = get_firebase()
     
     try:
-        # Verify course exists and needs TAs
-        course = db.child("courses").child(course_id).get().val()
-        if not course:
-            flash('Course not found.', 'error')
-            return redirect(url_for('committee.course_recommendations', course_id=course_id))
-        
-        current_assignments = db.child("ta_assignments")\
-            .order_by_child("course_id")\
-            .equal_to(course_id)\
-            .get().val() or {}
-            
-        if len(current_assignments) >= int(course['ta_requirements']['number_needed']):
-            flash('Course has reached maximum number of TAs.', 'error')
-            return redirect(url_for('committee.course_recommendations', course_id=course_id))
-        
-        # Get application
+        # Get application data
         application = db.child("applications").child(application_id).get().val()
         if not application:
             flash('Application not found.', 'error')
             return redirect(url_for('committee.course_recommendations', course_id=course_id))
-        
-        # Update application status
+            
+        # Get all applications from this applicant
+        applicant_applications = db.child("applications")\
+            .order_by_child("applicant_id")\
+            .equal_to(application['applicant_id'])\
+            .get().val() or {}
+            
+        # Update status of all other applications to "Unavailable"
+        for app_id, app_data in applicant_applications.items():
+            if app_id != application_id and app_data['status'] == 'Submitted':
+                db.child("applications").child(app_id).update({
+                    "status": "Unavailable",
+                    "updated_at": datetime.now().isoformat(),
+                    "unavailable_reason": "Selected for another course"
+                })
+
+        # Update selected application status
         db.child("applications").child(application_id).update({
             "status": "Selected",
             "selected_by": session['user_id'],
             "selected_date": datetime.now().isoformat(),
-            "response_due_date": (datetime.now() + timedelta(days=7)).isoformat()
+            "response_due_date": (datetime.now() + timedelta(days=7)).isoformat(),
+            "updated_at": datetime.now().isoformat()
         })
         
         # Create TA assignment
         assignment_data = {
             "course_id": course_id,
             "application_id": application_id,
-            "ta_id": application.get('applicant_id'),
+            "ta_id": application['applicant_id'],
             "status": "Pending",
             "assigned_by": session['user_id'],
             "assigned_at": datetime.now().isoformat()
         }
-        
         db.child("ta_assignments").push(assignment_data)
         
         flash('TA selected successfully. Waiting for applicant response.', 'success')
