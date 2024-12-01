@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from app.utils.decorators import login_required, role_required
 from app.utils.firebase import get_firebase
-from datetime import datetime
+from datetime import datetime, timedelta
 
 committee_bp = Blueprint('committee', __name__, url_prefix='/committee')
 
