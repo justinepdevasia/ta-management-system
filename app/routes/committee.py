@@ -88,56 +88,70 @@ def view_courses():
 def course_recommendations(course_id):
     _, _, db, _ = get_firebase()
     
-    # Get course details
-    course = db.child("courses").child(course_id).get().val()
-    if not course:
-        flash('Course not found.', 'error')
-        return redirect(url_for('committee.view_courses'))
-    
-    # Get current TA assignments
-    current_assignments = db.child("ta_assignments")\
-        .order_by_child("course_id")\
-        .equal_to(course_id)\
-        .get().val() or {}
-    
-    # Get recommendations for this course
-    recommendations = db.child("recommendations")\
-        .order_by_child("course_id")\
-        .equal_to(course_id)\
-        .get().val() or {}
-    
-    # Enrich recommendations with applicant data
-    enriched_recommendations = []
-    for rec_id, rec in recommendations.items():
-        application = db.child("applications").child(rec['application_id']).get().val()
-        applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
+    try:
+        # Get course details
+        course = db.child("courses").child(course_id).get().val()
+        if not course:
+            flash('Course not found.', 'error')
+            return redirect(url_for('committee.view_courses'))
         
-        if application and applicant:
-            # Skip if applicant is already assigned to this course
-            if any(a.get('ta_id') == application['applicant_id'] for a in current_assignments.values()):
-                continue
-                
-            enriched_recommendations.append({
-                'id': rec_id,
-                **rec,
-                'applicant_name': applicant.get('name'),
-                'applicant_email': applicant.get('email'),
-                'application_status': application.get('status'),
-                'gpa': application.get('gpa'),
-                'evaluation_scores': rec.get('evaluation_scores', {})
-            })
-    
-    # Sort recommendations by average evaluation score
-    for rec in enriched_recommendations:
-        scores = rec['evaluation_scores']
-        rec['average_score'] = sum(scores.values()) / len(scores) if scores else 0
-    
-    enriched_recommendations.sort(key=lambda x: x['average_score'], reverse=True)
-    
-    return render_template('committee/course_recommendations.html',
-                         course=course,
-                         recommendations=enriched_recommendations,
-                         current_assignments=current_assignments)
+        # Get current TA assignments
+        current_assignments = db.child("ta_assignments")\
+            .order_by_child("course_id")\
+            .equal_to(course_id)\
+            .get().val() or {}
+        
+        # Get recommendations - with fallback for missing index
+        try:
+            recommendations = db.child("recommendations")\
+                .order_by_child("course_id")\
+                .equal_to(course_id)\
+                .get().val() or {}
+        except:
+            # Fallback: Get all recommendations and filter manually
+            all_recommendations = db.child("recommendations").get().val() or {}
+            recommendations = {
+                k: v for k, v in all_recommendations.items()
+                if v.get('course_id') == course_id
+            }
+        
+        # Enrich recommendations with applicant data
+        enriched_recommendations = []
+        for rec_id, rec in recommendations.items():
+            application = db.child("applications").child(rec['application_id']).get().val()
+            applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
+            
+            if application and applicant:
+                # Skip if applicant is already assigned to this course
+                if any(a.get('ta_id') == application['applicant_id'] for a in current_assignments.values()):
+                    continue
+                    
+                enriched_recommendations.append({
+                    'id': rec_id,
+                    **rec,
+                    'applicant_name': applicant.get('name'),
+                    'applicant_email': applicant.get('email'),
+                    'application_id': application.get('id', ''),
+                    'application_status': application.get('status'),
+                    'gpa': application.get('gpa'),
+                    'evaluation_scores': rec.get('evaluation_scores', {})
+                })
+        
+        # Sort recommendations by average evaluation score
+        for rec in enriched_recommendations:
+            scores = rec['evaluation_scores']
+            rec['average_score'] = sum(scores.values()) / len(scores) if scores else 0
+        
+        enriched_recommendations.sort(key=lambda x: x['average_score'], reverse=True)
+        
+        return render_template('committee/course_recommendations.html',
+                             course=course,
+                             recommendations=enriched_recommendations,
+                             current_assignments=current_assignments)
+                             
+    except Exception as e:
+        flash(f'Error loading recommendations: {str(e)}', 'error')
+        return redirect(url_for('committee.view_courses'))
 
 @committee_bp.route('/course/<course_id>/select-ta/<application_id>', methods=['POST'])
 @login_required
@@ -214,6 +228,109 @@ def view_decisions():
 @login_required
 @role_required(['committee'])
 def reports():
+    _, _, db, _ = get_firebase()
+    
+    # Initialize stats dictionary with default values
+    stats = {
+        'by_department': {},
+        'by_semester': {},
+        'response_times': [],
+        'acceptance_rate': 0,
+        'total_selected': 0,
+        'total_accepted': 0,
+        'total_rejected': 0,
+        'avg_response_time': 0,  # Initialize with default value
+        'response_time_distribution': {
+            'quick': 0,    # < 2 days
+            'normal': 0,   # 2-5 days
+            'delayed': 0   # > 5 days
+        }
+    }
+    
+    try:
+        # Get all applications with decisions
+        applications = db.child("applications")\
+            .order_by_child("status")\
+            .start_at("Selected")\
+            .get().val() or {}
+        
+        response_times = []
+        
+        for app_id, app in applications.items():
+            # Count total selections
+            if app['status'] in ['Selected', 'Accepted', 'Rejected']:
+                stats['total_selected'] += 1
+            
+            # Count acceptances and rejections
+            if app['status'] == 'Accepted':
+                stats['total_accepted'] += 1
+            elif app['status'] == 'Rejected':
+                stats['total_rejected'] += 1
+            
+            # Calculate response time if available
+            if app.get('selected_date') and app.get('response_date'):
+                try:
+                    selected_date = datetime.fromisoformat(app['selected_date'])
+                    response_date = datetime.fromisoformat(app['response_date'])
+                    response_time = (response_date - selected_date).days
+                    response_times.append(response_time)
+                    
+                    # Categorize response time
+                    if response_time < 2:
+                        stats['response_time_distribution']['quick'] += 1
+                    elif response_time <= 5:
+                        stats['response_time_distribution']['normal'] += 1
+                    else:
+                        stats['response_time_distribution']['delayed'] += 1
+                except (ValueError, TypeError):
+                    continue
+            
+            # Get course info for department and semester stats
+            course = db.child("courses").child(app.get('course_id')).get().val() or {}
+            dept = course.get('department', 'Unknown')
+            semester = course.get('semester', 'Unknown')
+            
+            # Initialize department stats if needed
+            if dept not in stats['by_department']:
+                stats['by_department'][dept] = {'selected': 0, 'accepted': 0, 'rejected': 0}
+            if semester not in stats['by_semester']:
+                stats['by_semester'][semester] = {'selected': 0, 'accepted': 0, 'rejected': 0}
+            
+            # Update department and semester stats
+            if app['status'] in ['Selected', 'Accepted', 'Rejected']:
+                stats['by_department'][dept]['selected'] += 1
+                stats['by_semester'][semester]['selected'] += 1
+                
+                if app['status'] == 'Accepted':
+                    stats['by_department'][dept]['accepted'] += 1
+                    stats['by_semester'][semester]['accepted'] += 1
+                elif app['status'] == 'Rejected':
+                    stats['by_department'][dept]['rejected'] += 1
+                    stats['by_semester'][semester]['rejected'] += 1
+        
+        # Calculate averages and rates
+        if stats['total_selected'] > 0:
+            stats['acceptance_rate'] = (stats['total_accepted'] / stats['total_selected']) * 100
+        
+        if response_times:
+            stats['avg_response_time'] = sum(response_times) / len(response_times)
+            stats['response_times'] = response_times
+        
+        # Sort semester data chronologically
+        stats['by_semester'] = dict(sorted(stats['by_semester'].items()))
+        
+    except Exception as e:
+        flash(f'Error generating reports: {str(e)}', 'error')
+        # Initialize default values in case of error
+        stats.update({
+            'acceptance_rate': 0,
+            'avg_response_time': 0,
+            'total_selected': 0,
+            'total_accepted': 0,
+            'total_rejected': 0
+        })
+    
+    return render_template('committee/reports.html', stats=stats)
     _, _, db, _ = get_firebase()
     
     # Generate statistics for committee decisions and responses
