@@ -232,23 +232,41 @@ def api_select_ta():
     
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            
         course_id = data.get('course_id')
         application_id = data.get('application_id')
         
-        # Verify course exists and needs TAs
+        if not course_id or not application_id:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        # Verify course exists
         course = db.child("courses").child(course_id).get().val()
         if not course:
             return jsonify({'success': False, 'error': 'Course not found'}), 404
         
-        current_assignments = db.child("ta_assignments")\
-            .order_by_child("course_id")\
-            .equal_to(course_id)\
-            .get().val() or {}
+        # Safely get ta_requirements with default value
+        ta_requirements = course.get('ta_requirements', {})
+        if not ta_requirements:
+            ta_requirements = {'number_needed': 1}  # Default to 1 if not specified
+        
+        number_needed = int(ta_requirements.get('number_needed', 1))
+        
+        # Get current assignments
+        try:
+            current_assignments = db.child("ta_assignments")\
+                .order_by_child("course_id")\
+                .equal_to(course_id)\
+                .get().val() or {}
+        except Exception as e:
+            print(f"Error getting assignments: {str(e)}")
+            current_assignments = {}
             
-        if len(current_assignments) >= int(course['ta_requirements']['number_needed']):
+        if len(current_assignments) >= number_needed:
             return jsonify({
                 'success': False, 
-                'error': 'Course has reached maximum number of TAs'
+                'error': f'Course has reached maximum number of TAs ({number_needed})'
             }), 400
         
         # Get application
@@ -256,21 +274,51 @@ def api_select_ta():
         if not application:
             return jsonify({'success': False, 'error': 'Application not found'}), 404
         
+        # Check if already selected
+        if application.get('status') in ['Selected', 'Accepted', 'Rejected']:
+            return jsonify({
+                'success': False, 
+                'error': f'Application is already in {application.get("status")} status'
+            }), 400
+        
         # Update application status
-        db.child("applications").child(application_id).update({
+        update_data = {
             "status": "Selected",
             "selected_by": session['user_id'],
             "selected_date": datetime.now().isoformat(),
             "response_due_date": (datetime.now() + timedelta(days=7)).isoformat(),
-            "course_id": course_id  # Make sure to store the course_id
-        })
+            "course_id": course_id
+        }
         
-        return jsonify({
-            'success': True,
-            'message': 'TA selected successfully'
-        })
+        try:
+            db.child("applications").child(application_id).update(update_data)
+            
+            # Also create a pending TA assignment
+            assignment_data = {
+                "course_id": course_id,
+                "application_id": application_id,
+                "ta_id": application.get('applicant_id'),
+                "status": "Pending",
+                "assigned_by": session['user_id'],
+                "assigned_at": datetime.now().isoformat()
+            }
+            
+            db.child("ta_assignments").push(assignment_data)
+            
+            return jsonify({
+                'success': True,
+                'message': 'TA selected successfully'
+            })
+            
+        except Exception as e:
+            print(f"Error updating data: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Database update failed: {str(e)}'
+            }), 500
         
     except Exception as e:
+        print(f"Unexpected error: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

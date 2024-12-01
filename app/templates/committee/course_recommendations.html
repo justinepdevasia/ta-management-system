@@ -218,15 +218,15 @@ function selectTA(courseId, applicationId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Reload the page to show updated status
+            alert('TA selected successfully!');
             window.location.reload();
         } else {
-            alert(data.error || 'Failed to select TA');
+            alert(data.error || 'Failed to select TA. Please try again.');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while selecting the TA');
+        alert('An error occurred while selecting the TA. Please try again.');
     });
 }
 
