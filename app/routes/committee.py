@@ -127,12 +127,15 @@ def view_courses():
     
     # Enrich course data with current TA assignments and recommendations
     for course_id, course in courses.items():
-        # Get current TA assignments
+        # Get current TA assignments (only count active assignments)
         assignments = db.child("ta_assignments")\
             .order_by_child("course_id")\
             .equal_to(course_id)\
             .get().val() or {}
-        course['current_tas'] = len(assignments)
+            
+        # Only count active assignments
+        active_assignments = [a for a in assignments.values() if a.get('status') == 'Active']
+        course['current_tas'] = len(active_assignments)
         
         # Get recommendations for this course
         recommendations = db.child("recommendations")\
