@@ -57,6 +57,9 @@ def register():
 def login():
     _, auth, db, _ = get_firebase()
     
+    if 'user_id' in session:
+        return redirect(url_for(f"{session['role']}.dashboard"))
+    
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
@@ -74,7 +77,7 @@ def login():
             session['role'] = user_data['role']
             session['name'] = user_data['name']
             
-            return redirect(url_for(f'{user_data["role"]}.dashboard'))
+            return redirect(url_for(f"{user_data['role']}.dashboard"))
             
         except Exception as e:
             flash('Invalid email or password.', 'error')

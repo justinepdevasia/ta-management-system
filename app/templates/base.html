@@ -1,43 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FAU TA Management System - {% block title %}{% endblock %}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 </head>
+
 <body class="bg-gray-100">
     <!-- Navigation -->
     <nav class="bg-blue-900 text-white shadow-lg">
         <div class="container mx-auto px-6 py-3">
             <div class="flex justify-between items-center">
                 <div class="font-bold text-xl">
-                    FAU TA Management
+                    <a href="{{ url_for('index') }}">FAU TA Management</a>
                 </div>
                 <div class="space-x-4">
                     {% if 'user_id' in session %}
-                        <a href="{{ url_for('auth.profile') }}" class="hover:text-blue-200">Profile</a>
-                        <a href="{{ url_for('auth.logout') }}" class="hover:text-blue-200">Logout</a>
+                    <a href="{{ url_for(session['role'] + '.dashboard') }}" class="hover:text-blue-200">Dashboard</a>
+                    {% if session['role'] == 'applicant' %}
+                    <a href="{{ url_for('applicant.view_application', application_id=current_application.id) if current_application else url_for('applicant.new_application') }}"
+                        class="hover:text-blue-200">My Application</a>
+                    {% endif %}
+                    {% if session['role'] == 'staff' %}
+                    <a href="{{ url_for('staff.manage_courses') }}" class="hover:text-blue-200">Manage Courses</a>
+                    <a href="{{ url_for('staff.view_applications') }}" class="hover:text-blue-200">Applications</a>
+                    {% endif %}
+                    {% if session['role'] == 'committee' %}
+                    <a href="{{ url_for('committee.view_courses') }}" class="hover:text-blue-200">Courses</a>
+                    <a href="{{ url_for('committee.view_decisions') }}" class="hover:text-blue-200">Decisions</a>
+                    {% endif %}
+                    {% if session['role'] == 'instructor' %}
+                    <a href="{{ url_for('instructor.view_courses') }}" class="hover:text-blue-200">My Courses</a>
+                    <a href="{{ url_for('instructor.view_reports') }}" class="hover:text-blue-200">Reports</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.profile') }}" class="hover:text-blue-200">Profile</a>
+                    <a href="{{ url_for('auth.logout') }}" class="hover:text-blue-200">Logout</a>
                     {% else %}
-                        <a href="{{ url_for('auth.login') }}" class="hover:text-blue-200">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="hover:text-blue-200">Register</a>
+                    <a href="{{ url_for('auth.login') }}" class="hover:text-blue-200">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="hover:text-blue-200">Register</a>
                     {% endif %}
                 </div>
             </div>
         </div>
     </nav>
 
+
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="container mx-auto mt-4 px-4">
-                {% for category, message in messages %}
-                    <div class="p-4 mb-4 rounded-md {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
+    {% if messages %}
+    <div class="container mx-auto mt-4 px-4">
+        {% for category, message in messages %}
+        <div
+            class="p-4 mb-4 rounded-md {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% endwith %}
 
     <!-- Main Content -->
@@ -52,4 +73,5 @@
         </div>
     </footer>
 </body>
+
 </html>
