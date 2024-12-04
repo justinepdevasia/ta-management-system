@@ -166,12 +166,28 @@ def view_application(application_id):
         flash('Application not found.', 'error')
         return redirect(url_for('applicant.dashboard'))
     
-    # Get course details
-    course = db.child("courses").child(application['course_id']).get().val()
+    # Add the id to the application data
+    application['id'] = application_id
+    
+    # Get course details for all selected courses
+    course_details = []
+    for course_id in application.get('course_ids', []):
+        course = db.child("courses").child(course_id).get().val()
+        if course:
+            course_details.append({
+                'id': course_id,
+                'name': course.get('name'),
+                'course_code': course.get('course_code'),
+                'department_name': course.get('department_name'),
+                'semester': course.get('semester'),
+                'status': application.get('course_statuses', {}).get(course_id, 'Submitted')
+            })
+    
+    # Add course details to application data
+    application['course_details'] = course_details
     
     return render_template('applicant/view_application.html',
-                         application=application,
-                         course=course)
+                         application=application)
 
 @applicant_bp.route('/application/<application_id>/handle-offer/<action>', methods=['POST'])
 @login_required
