@@ -223,8 +223,23 @@ def handle_offer(application_id, course_id, action):
         course_response_dates = application.get('course_response_dates', {})
         course_response_dates[course_id] = datetime.now().isoformat()
         
+        # Determine overall application status
+        # If any course is Selected, keep status as Selected
+        # If all courses are decided (Accepted/Rejected), set status based on whether any were accepted
+        all_decided = all(status in ['Accepted', 'Rejected'] for status in course_statuses.values())
+        any_selected = any(status == 'Selected' for status in course_statuses.values())
+        any_accepted = any(status == 'Accepted' for status in course_statuses.values())
+        
+        if any_selected:
+            overall_status = 'Selected'
+        elif all_decided:
+            overall_status = 'Accepted' if any_accepted else 'Rejected'
+        else:
+            overall_status = 'Reviewed'
+        
         # Update application
         db.child("applications").child(application_id).update({
+            "status": overall_status,
             "course_statuses": course_statuses,
             "course_response_dates": course_response_dates,
             "updated_at": datetime.now().isoformat()
