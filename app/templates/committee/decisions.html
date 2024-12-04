@@ -10,28 +10,24 @@
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-sm font-medium text-gray-500">Total Selections</h3>
-            <p class="mt-2 text-2xl font-bold text-gray-900">
-                {{ applications|sum(attribute='courses|selectattr("status", "equalto", "Selected")|list|length') +
-                   applications|sum(attribute='courses|selectattr("status", "equalto", "Accepted")|list|length') +
-                   applications|sum(attribute='courses|selectattr("status", "equalto", "Rejected")|list|length') }}
-            </p>
+            <p class="mt-2 text-2xl font-bold text-gray-900">{{ decisions|length }}</p>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-sm font-medium text-gray-500">Pending Response</h3>
             <p class="mt-2 text-2xl font-bold text-yellow-600">
-                {{ applications|sum(attribute='courses|selectattr("status", "equalto", "Selected")|list|length') }}
+                {{ decisions|selectattr('status', 'equalto', 'Selected')|list|length }}
             </p>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-sm font-medium text-gray-500">Accepted</h3>
             <p class="mt-2 text-2xl font-bold text-green-600">
-                {{ applications|sum(attribute='courses|selectattr("status", "equalto", "Accepted")|list|length') }}
+                {{ decisions|selectattr('status', 'equalto', 'Accepted')|list|length }}
             </p>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-sm font-medium text-gray-500">Rejected</h3>
             <p class="mt-2 text-2xl font-bold text-red-600">
-                {{ applications|sum(attribute='courses|selectattr("status", "equalto", "Rejected")|list|length') }}
+                {{ decisions|selectattr('status', 'equalto', 'Rejected')|list|length }}
             </p>
         </div>
     </div>
@@ -74,64 +70,60 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    {% for app in applications %}
-                        {% for course in app.courses %}
-                        <tr class="decision-row" data-status="{{ course.status }}">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center">
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">{{ app.applicant_name }}</div>
-                                        <div class="text-sm text-gray-500">{{ app.applicant_email }}</div>
-                                    </div>
+                    {% for decision in decisions %}
+                    <tr class="decision-row" data-status="{{ decision.status }}">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ decision.applicant_name }}</div>
+                                    <div class="text-sm text-gray-500">{{ decision.applicant_email }}</div>
                                 </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="text-sm text-gray-900">{{ course.code }}</div>
-                                <div class="text-sm text-gray-500">{{ course.name }}</div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="text-sm text-gray-500">
-                                    <div>Selected: {{ course.selected_date|datetime }}</div>
-                                    {% if course.response_due_date %}
-                                    <div class="mt-1">
-                                        Due: {{ course.response_due_date|datetime }}
-                                        {% if course.status == 'Selected' %}
-                                            {% set days_left = ((course.response_due_date|datetime_obj - now).days) %}
-                                            <span class="ml-2 px-2 py-0.5 rounded-full text-xs
-                                                {% if days_left <= 1 %}bg-red-100 text-red-800
-                                                {% elif days_left <= 3 %}bg-yellow-100 text-yellow-800
-                                                {% else %}bg-green-100 text-green-800{% endif %}">
-                                                {{ days_left }} day(s) left
-                                            </span>
-                                        {% endif %}
-                                    </div>
-                                    {% endif %}
-                                    {% if course.response_date %}
-                                    <div class="mt-1">
-                                        Responded: {{ course.response_date|datetime }}
-                                    </div>
-                                    {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">{{ decision.course_code }}</div>
+                            <div class="text-sm text-gray-500">{{ decision.course_name }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-500">
+                                <div>Selected: {{ decision.selected_date|datetime }}</div>
+                                {% if decision.response_due_date and decision.status == 'Selected' %}
+                                <div class="mt-1">
+                                    Due: {{ decision.response_due_date|datetime }}
+                                    {% set days_left = ((decision.response_due_date|datetime_obj - now).days) %}
+                                    <span class="ml-2 px-2 py-0.5 rounded-full text-xs
+                                        {% if days_left <= 1 %}bg-red-100 text-red-800
+                                        {% elif days_left <= 3 %}bg-yellow-100 text-yellow-800
+                                        {% else %}bg-green-100 text-green-800{% endif %}">
+                                        {{ days_left }} day(s) left
+                                    </span>
                                 </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
-                                    {% if course.status == 'Selected' %}bg-yellow-100 text-yellow-800
-                                    {% elif course.status == 'Accepted' %}bg-green-100 text-green-800
-                                    {% elif course.status == 'Rejected' %}bg-red-100 text-red-800{% endif %}">
-                                    {{ course.status }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 text-sm">
-                                {% if course.status == 'Rejected' %}
-                                <a href="{{ url_for('committee.course_recommendations', course_id=course.id) }}"
-                                   class="text-blue-600 hover:text-blue-900">Select New TA</a>
-                                {% else %}
-                                <button onclick="viewDetails('{{ app.id }}', '{{ course.id }}')"
-                                        class="text-blue-600 hover:text-blue-900">View Details</button>
                                 {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
+                                {% if decision.response_date %}
+                                <div class="mt-1">
+                                    Response received: {{ decision.response_date|datetime }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                {% if decision.status == 'Selected' %}bg-yellow-100 text-yellow-800
+                                {% elif decision.status == 'Accepted' %}bg-green-100 text-green-800
+                                {% elif decision.status == 'Rejected' %}bg-red-100 text-red-800{% endif %}">
+                                {{ decision.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                            {% if decision.status == 'Rejected' %}
+                            <a href="{{ url_for('committee.course_recommendations', course_id=decision.course_id) }}"
+                               class="text-blue-600 hover:text-blue-900">Select New TA</a>
+                            {% else %}
+                            <button onclick="viewDetails('{{ decision.application_id }}', '{{ decision.course_id }}')"
+                                    class="text-blue-600 hover:text-blue-900">View Details</button>
+                            {% endif %}
+                        </td>
+                    </tr>
                     {% else %}
                     <tr>
                         <td colspan="5" class="px-6 py-4 text-center text-gray-500">

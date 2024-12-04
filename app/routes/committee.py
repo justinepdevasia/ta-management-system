@@ -18,41 +18,90 @@ def dashboard():
                              len(db.child("ta_assignments").order_by_child("course_id").equal_to(k).get().val() or {})}
     
     # Get recent TA decisions with enriched data
-    recent_decisions = {}
-    all_decisions = db.child("applications")\
-        .order_by_child("status")\
-        .start_at("Selected")\
-        .end_at("Selected\uf8ff")\
-        .limit_to_last(5)\
-        .get().val() or {}
-        
-    for app_id, app in all_decisions.items():
-        # Get applicant details
-        applicant = db.child("users").child(app.get('applicant_id')).get().val()
-        # Get course details
-        course = db.child("courses").child(app.get('course_id')).get().val()
-        
-        if applicant and course:
-            recent_decisions[app_id] = {
-                **app,
-                'applicant_name': applicant.get('name'),
-                'applicant_email': applicant.get('email'),
-                'course_id': app.get('course_id'),
-                'course_code': course.get('course_code'),
-                'course_name': course.get('name')
-            }
+    recent_decisions = []
+    applications = db.child("applications").get().val() or {}
     
+    for app_id, app in applications.items():
+        applicant = db.child("users").child(app.get('applicant_id')).get().val()
+        if not applicant:
+            continue
+
+        for course_id in app.get('course_ids', []):
+            course = db.child("courses").child(course_id).get().val()
+            if not course:
+                continue
+                
+            course_status = app.get('course_statuses', {}).get(course_id)
+            if course_status in ['Selected', 'Accepted', 'Rejected']:
+                recent_decisions.append({
+                    'application_id': app_id,
+                    'applicant_name': applicant.get('name'),
+                    'applicant_email': applicant.get('email'),
+                    'course_id': course_id,
+                    'course_code': course.get('course_code'),
+                    'course_name': course.get('name'),
+                    'status': course_status,
+                    'selected_date': app.get('course_selected_dates', {}).get(course_id),
+                    'response_date': app.get('course_response_dates', {}).get(course_id)
+                })
+
+    # Sort by date and limit to most recent
+    recent_decisions.sort(key=lambda x: x.get('selected_date', ''), reverse=True)
+    recent_decisions = recent_decisions[:5]  # Limit to 5 most recent
+
     stats = {
         'courses_needing_tas': len(courses_needing_tas),
-        'pending_decisions': len([d for d in recent_decisions.values() if d['status'] == 'Selected']),
-        'accepted_offers': len([d for d in recent_decisions.values() if d['status'] == 'Accepted']),
-        'rejected_offers': len([d for d in recent_decisions.values() if d['status'] == 'Rejected'])
+        'pending_decisions': len([d for d in recent_decisions if d['status'] == 'Selected']),
+        'accepted_offers': len([d for d in recent_decisions if d['status'] == 'Accepted']),
+        'rejected_offers': len([d for d in recent_decisions if d['status'] == 'Rejected'])
     }
     
     return render_template('committee/dashboard.html',
                          stats=stats,
                          courses=courses_needing_tas,
                          recent_decisions=recent_decisions)
+
+@committee_bp.route('/decisions')
+@login_required
+@role_required(['committee'])
+def view_decisions():
+    _, _, db, _ = get_firebase()
+    
+    # Get all decisions
+    decisions = []
+    applications = db.child("applications").get().val() or {}
+    
+    for app_id, app in applications.items():
+        applicant = db.child("users").child(app.get('applicant_id')).get().val()
+        if not applicant:
+            continue
+            
+        for course_id in app.get('course_ids', []):
+            course = db.child("courses").child(course_id).get().val()
+            if not course:
+                continue
+                
+            course_status = app.get('course_statuses', {}).get(course_id)
+            if course_status in ['Selected', 'Accepted', 'Rejected']:
+                decisions.append({
+                    'application_id': app_id,
+                    'applicant_name': applicant.get('name'),
+                    'applicant_email': applicant.get('email'),
+                    'course_id': course_id,
+                    'course_code': course.get('course_code'),
+                    'course_name': course.get('name'),
+                    'status': course_status,
+                    'selected_date': app.get('course_selected_dates', {}).get(course_id),
+                    'response_date': app.get('course_response_dates', {}).get(course_id),
+                    'response_due_date': app.get('course_response_due_dates', {}).get(course_id)
+                })
+    
+    # Sort by date (most recent first)
+    decisions.sort(key=lambda x: x.get('selected_date', ''), reverse=True)
+    
+    return render_template('committee/decisions.html',
+                         decisions=decisions)
+
 @committee_bp.route('/courses')
 @login_required
 @role_required(['committee'])
@@ -157,53 +206,6 @@ def select_ta(course_id, application_id):
     except Exception as e:
         flash(f'Error selecting TA: {str(e)}', 'error')
         return redirect(url_for('committee.course_recommendations', course_id=course_id))
-
-@committee_bp.route('/decisions')
-@login_required
-@role_required(['committee'])
-def view_decisions():
-    _, _, db, _ = get_firebase()
-    
-    # Get all applications with decisions
-    applications = db.child("applications")\
-        .order_by_child("status")\
-        .start_at("Selected")\
-        .get().val() or {}
-    
-    # Enrich application data
-    enriched_applications = []
-    for app_id, app in applications.items():
-        applicant = db.child("users").child(app['applicant_id']).get().val()
-        
-        if applicant:
-            # Get courses data
-            courses_data = []
-            for course_id in app.get('course_ids', []):
-                course = db.child("courses").child(course_id).get().val()
-                if course:
-                    status = app.get('course_statuses', {}).get(course_id, 'Pending')
-                    if status in ['Selected', 'Accepted', 'Rejected']:
-                        courses_data.append({
-                            'id': course_id,
-                            'code': course.get('course_code'),
-                            'name': course.get('name'),
-                            'status': status,
-                            'selected_date': app.get('course_selected_dates', {}).get(course_id),
-                            'response_date': app.get('course_response_dates', {}).get(course_id),
-                            'response_due_date': app.get('course_response_due_dates', {}).get(course_id)
-                        })
-            
-            if courses_data:  # Only include if there are relevant course decisions
-                enriched_applications.append({
-                    'id': app_id,
-                    'applicant_name': applicant.get('name'),
-                    'applicant_email': applicant.get('email'),
-                    'submission_date': app.get('submission_date'),
-                    'courses': courses_data
-                })
-    
-    return render_template('committee/decisions.html',
-                         applications=enriched_applications)
 
 @committee_bp.route('/api/select-ta', methods=['POST'])
 @login_required

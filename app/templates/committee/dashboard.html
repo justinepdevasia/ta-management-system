@@ -31,8 +31,8 @@
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-900">Courses Needing TAs</h2>
-                <a href="{{ url_for('committee.view_courses') }}" 
-                   class="text-blue-600 hover:text-blue-800 text-sm">View All Courses</a>
+                <a href="{{ url_for('committee.view_courses') }}" class="text-blue-600 hover:text-blue-800 text-sm">View
+                    All Courses</a>
             </div>
         </div>
         <div class="divide-y divide-gray-200">
@@ -54,7 +54,7 @@
                             Needs {{ course.ta_requirements.number_needed - (course.current_tas|default(0)) }} TA(s)
                         </p>
                         <a href="{{ url_for('committee.course_recommendations', course_id=course_id) }}"
-                           class="inline-block mt-2 px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-600 hover:text-white">
+                            class="inline-block mt-2 px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-600 hover:text-white">
                             View Recommendations
                         </a>
                     </div>
@@ -68,98 +68,58 @@
         </div>
     </div>
 
-    <!-- Recent TA Decisions -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900">Recent TA Decisions</h2>
-                <a href="{{ url_for('committee.view_decisions') }}" 
-                   class="text-blue-600 hover:text-blue-800 text-sm">View All Decisions</a>
+    <!-- In dashboard.html, replace the recent decisions section -->
+    <div class="mt-8">
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-bold">Recent TA Decisions</h2>
+                    <a href="{{ url_for('committee.view_decisions') }}"
+                        class="text-blue-600 hover:text-blue-800 text-sm">View All Decisions</a>
+                </div>
             </div>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Applicant
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Course
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Decision Date
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for decision_id, decision in recent_decisions.items() %}
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ decision.applicant_name }}</div>
-                            <div class="text-sm text-gray-500">{{ decision.applicant_email }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ decision.course_code }}</div>
-                            <div class="text-sm text-gray-500">{{ decision.course_name }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                {% if decision.status == 'Selected' %}bg-yellow-100 text-yellow-800
-                                {% elif decision.status == 'Accepted' %}bg-green-100 text-green-800
-                                {% elif decision.status == 'Rejected' %}bg-red-100 text-red-800{% endif %}">
+            <div class="p-6">
+                {% if recent_decisions %}
+                <div class="space-y-4">
+                    {% for decision in recent_decisions %}
+                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="font-medium">{{ decision.applicant_name }}</p>
+                            <p class="text-sm text-gray-600">{{ decision.course_code }} - {{ decision.course_name }}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                            {% if decision.status == 'Selected' %}bg-yellow-100 text-yellow-800
+                            {% elif decision.status == 'Accepted' %}bg-green-100 text-green-800
+                            {% elif decision.status == 'Rejected' %}bg-red-100 text-red-800{% endif %}">
                                 {{ decision.status }}
                             </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {% if decision.status == 'Selected' %}
-                                {{ decision.selected_date|datetime }}
-                            {% elif decision.status == 'Accepted' or decision.status == 'Rejected' %}
-                                {{ decision.response_date|datetime }}
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            {% if decision.status == 'Rejected' %}
-                            <a href="{{ url_for('committee.course_recommendations', course_id=decision.course_id) }}"
-                               class="text-blue-600 hover:text-blue-900">Select New TA</a>
-                            {% else %}
-                            <a href="{{ url_for('committee.view_decisions') }}"
-                               class="text-blue-600 hover:text-blue-900">View Details</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                            No recent decisions found.
-                        </td>
-                    </tr>
+                            <p class="text-sm text-gray-500 mt-1">{{ decision.selected_date|datetime }}</p>
+                        </div>
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+                {% else %}
+                <p class="text-center text-gray-500">No recent decisions</p>
+                {% endif %}
+            </div>
         </div>
     </div>
 
     <!-- Quick Actions -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-        <a href="{{ url_for('committee.view_courses') }}" 
-           class="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+        <a href="{{ url_for('committee.view_courses') }}"
+            class="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Manage Courses</h3>
             <p class="text-sm text-gray-600">View and manage TA assignments for all courses</p>
         </a>
         <a href="{{ url_for('committee.view_decisions') }}"
-           class="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+            class="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Review Decisions</h3>
             <p class="text-sm text-gray-600">Track TA offer acceptances and rejections</p>
         </a>
         <a href="{{ url_for('committee.reports') }}"
-           class="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+            class="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">View Reports</h3>
             <p class="text-sm text-gray-600">Access statistics and analytics on TA selections</p>
         </a>
