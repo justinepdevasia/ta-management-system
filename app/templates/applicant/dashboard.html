@@ -109,8 +109,8 @@
                                     </form>
                                 </div>
                                 {% else %}
-                                <a href="{{ url_for('applicant.view_course_status', application_id=application.id, course_id=course.id) }}"
-                                   class="text-blue-600 hover:text-blue-900">View Details</a>
+                                <a href="{{ url_for('applicant.view_application', application_id=application.id) }}"
+                                    class="text-blue-600 hover:text-blue-900">View Details</a>
                                 {% endif %}
                             </td>
                         </tr>

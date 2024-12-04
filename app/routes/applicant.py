@@ -126,6 +126,33 @@ def new_application():
     return render_template('applicant/new_application.html', 
                          courses=available_courses)
 
+@applicant_bp.route('/application/<application_id>/course/<course_id>')
+@login_required
+@role_required(['applicant'])
+def view_course_status(application_id, course_id):
+    _, _, db, _ = get_firebase()
+    
+    # Get application data
+    application = db.child("applications").child(application_id).get().val()
+    
+    if not application or application['applicant_id'] != session['user_id']:
+        flash('Application not found.', 'error')
+        return redirect(url_for('applicant.dashboard'))
+    
+    # Get course details
+    course = db.child("courses").child(course_id).get().val()
+    if not course:
+        flash('Course not found.', 'error')
+        return redirect(url_for('applicant.dashboard'))
+        
+    # Get course-specific status
+    course_status = application.get('course_statuses', {}).get(course_id, 'Pending')
+    
+    return render_template('applicant/course_status.html',
+                         application=application,
+                         course=course,
+                         status=course_status)
+
 @applicant_bp.route('/application/<application_id>', methods=['GET'])
 @login_required
 @role_required(['applicant'])
