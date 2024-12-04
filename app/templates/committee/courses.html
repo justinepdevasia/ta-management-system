@@ -168,30 +168,46 @@
 </div>
 
 <script>
+
+// Replace the existing viewAssignments function with this:
 function viewAssignments(courseId) {
-    // In a real application, you would fetch the assignments data here
-    // For now, we'll just show a placeholder
     document.getElementById('assignmentsModal').classList.remove('hidden');
-    document.getElementById('assignmentsContent').innerHTML = 'Loading assignments...';
+    const content = document.getElementById('assignmentsContent');
+    content.innerHTML = 'Loading assignments...';
     
-    // Example of how to fetch assignments:
     fetch(`/committee/api/course/${courseId}/assignments`)
         .then(response => response.json())
         .then(data => {
-            let content = '';
-            data.assignments.forEach(assignment => {
-                content += `
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <div class="font-medium">${assignment.ta_name}</div>
-                        <div class="text-sm text-gray-500">Assigned: ${assignment.assigned_date}</div>
-                        <div class="text-sm text-gray-500">Status: ${assignment.status}</div>
-                    </div>
-                `;
-            });
-            document.getElementById('assignmentsContent').innerHTML = content;
+            if (data.success) {
+                if (data.assignments.length === 0) {
+                    content.innerHTML = '<p class="text-gray-500 text-center">No current TA assignments.</p>';
+                    return;
+                }
+                
+                let html = '';
+                data.assignments.forEach(assignment => {
+                    html += `
+                        <div class="p-3 bg-gray-50 rounded-lg mb-3">
+                            <div class="font-medium">${assignment.ta_name}</div>
+                            <div class="text-sm text-gray-500">${assignment.ta_email}</div>
+                            <div class="text-sm text-gray-500">Assigned: ${new Date(assignment.assigned_date).toLocaleDateString()}</div>
+                            <div class="mt-1">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    ${assignment.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                    ${assignment.status}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = '<p class="text-red-500 text-center">Error loading assignments.</p>';
+            }
         })
         .catch(error => {
-            document.getElementById('assignmentsContent').innerHTML = 'Error loading assignments.';
+            console.error('Error:', error);
+            content.innerHTML = '<p class="text-red-500 text-center">Error loading assignments.</p>';
         });
 }
 

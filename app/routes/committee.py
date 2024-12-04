@@ -405,6 +405,117 @@ def course_recommendations(course_id):
         flash(f'Error loading recommendations: {str(e)}', 'error')
         return redirect(url_for('committee.view_courses'))
 
+@committee_bp.route('/api/application/<application_id>/course/<course_id>/decision')
+@login_required
+@role_required(['committee'])
+def api_get_decision(application_id, course_id):
+    _, _, db, _ = get_firebase()
+    
+    try:
+        # Get application data
+        application = db.child("applications").child(application_id).get().val()
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+
+        # Get course details
+        course = db.child("courses").child(course_id).get().val()
+        if not course:
+            return jsonify({'error': 'Course not found'}), 404
+            
+        # Get reviewer details if available
+        reviewer = None
+        if application.get('staff_review'):
+            reviewer = db.child("users").child(application['staff_review']['reviewer_id']).get().val()
+            
+        # Get selector details if available
+        selector = None
+        if application.get('selected_by'):
+            selector = db.child("users").child(application['selected_by']).get().val()
+
+        # Prepare timeline
+        timeline = []
+        
+        # Add submission
+        timeline.append({
+            'action': 'Application Submitted',
+            'date': application.get('submission_date')
+        })
+        
+        # Add review if available
+        if application.get('staff_review'):
+            timeline.append({
+                'action': 'Application Reviewed',
+                'date': application['staff_review'].get('review_date')
+            })
+        
+        # Add course-specific events
+        if application.get('course_selected_dates', {}).get(course_id):
+            timeline.append({
+                'action': 'Selected as TA',
+                'date': application['course_selected_dates'][course_id]
+            })
+            
+        if application.get('course_response_dates', {}).get(course_id):
+            status = application.get('course_statuses', {}).get(course_id)
+            timeline.append({
+                'action': f'Offer {status}',
+                'date': application['course_response_dates'][course_id]
+            })
+            
+        # Sort timeline by date
+        timeline.sort(key=lambda x: x['date'] if x['date'] else '')
+        
+        response_data = {
+            'status': application.get('course_statuses', {}).get(course_id, 'Unknown'),
+            'selected_date': application.get('course_selected_dates', {}).get(course_id),
+            'response_date': application.get('course_response_dates', {}).get(course_id),
+            'selected_by': selector.get('name', 'Unknown') if selector else 'Unknown',
+            'reviewer': reviewer.get('name') if reviewer else None,
+            'review_date': application.get('staff_review', {}).get('review_date'),
+            'review_comments': application.get('staff_review', {}).get('comments'),
+            'timeline': timeline
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@committee_bp.route('/api/course/<course_id>/assignments')
+@login_required
+@role_required(['committee'])
+def api_get_course_assignments(course_id):
+    _, _, db, _ = get_firebase()
+    
+    try:
+        assignments = db.child("ta_assignments")\
+            .order_by_child("course_id")\
+            .equal_to(course_id)\
+            .get().val() or {}
+            
+        enriched_assignments = []
+        for assignment_id, assignment in assignments.items():
+            ta = db.child("users").child(assignment['ta_id']).get().val()
+            if ta:
+                enriched_assignments.append({
+                    'id': assignment_id,
+                    'ta_name': ta.get('name'),
+                    'ta_email': ta.get('email'),
+                    'assigned_date': assignment.get('assigned_at'),
+                    'status': assignment.get('status', 'Unknown')
+                })
+        
+        return jsonify({
+            'success': True,
+            'assignments': enriched_assignments
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @committee_bp.route('/reports')
 @login_required
 @role_required(['committee'])
