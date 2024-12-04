@@ -12,45 +12,81 @@ staff_bp = Blueprint('staff', __name__, url_prefix='/staff')
 def dashboard():
     _, _, db, _ = get_firebase()
     
-    # Get summary statistics
+    # Get all applications
     all_applications = db.child("applications").get().val() or {}
-    pending_applications = {k: v for k, v in all_applications.items() if v.get('status') == 'Submitted'}
-    reviewed_applications = {k: v for k, v in all_applications.items() if v.get('status') == 'Reviewed'}
     
-    stats = {
-        'total_applications': len(all_applications),
-        'pending_review': len(pending_applications),
-        'reviewed': len(reviewed_applications),
-        'courses_needing_tas': len(db.child("courses").order_by_child("ta_assigned").equal_to(False).get().val() or {})
+    # Initialize counters
+    status_counts = {
+        'total': 0,
+        'pending_review': 0,
+        'reviewed': 0,
+        'selected': 0,
+        'accepted': 0,
+        'rejected': 0
     }
     
-    # Get recent applications with applicant details
+    # Process recent applications with correct status
     recent_applications = []
     for app_id, app in all_applications.items():
-        if len(recent_applications) >= 5:  # Limit to 5 recent applications
-            break
-            
-        applicant = db.child("users").child(app.get('applicant_id')).get().val()
-        if applicant:
-            app_data = {
-                'id': app_id,
-                **app,
-                'applicant_name': applicant.get('name'),
-                'applicant_email': applicant.get('email')
-            }
-            recent_applications.append(app_data)
+        status_counts['total'] += 1
+        
+        # Determine the most advanced status from course_statuses
+        course_statuses = app.get('course_statuses', {}).values()
+        base_status = app.get('status', 'Submitted')
+        
+        current_status = base_status
+        if course_statuses:
+            if 'Accepted' in course_statuses:
+                current_status = 'Accepted'
+            elif 'Rejected' in course_statuses:
+                current_status = 'Rejected'
+            elif 'Selected' in course_statuses:
+                current_status = 'Selected'
+            elif base_status == 'Reviewed':
+                current_status = 'Reviewed'
+        
+        # Update status counts
+        if current_status == 'Submitted':
+            status_counts['pending_review'] += 1
+        elif current_status == 'Reviewed':
+            status_counts['reviewed'] += 1
+        elif current_status == 'Selected':
+            status_counts['selected'] += 1
+        elif current_status == 'Accepted':
+            status_counts['accepted'] += 1
+        elif current_status == 'Rejected':
+            status_counts['rejected'] += 1
+        
+        # Add to recent applications list
+        if len(recent_applications) < 5:  # Limit to 5 recent applications
+            applicant = db.child("users").child(app.get('applicant_id')).get().val()
+            if applicant:
+                app_data = {
+                    'id': app_id,
+                    **app,
+                    'status': current_status,  # Use the determined status
+                    'applicant_name': applicant.get('name'),
+                    'applicant_email': applicant.get('email')
+                }
+                recent_applications.append(app_data)
     
     # Get courses needing TAs
     courses = db.child("courses").order_by_child("ta_assigned").equal_to(False).get().val() or {}
     
-    # Get course recommendations
-    recommendations = db.child("recommendations").get().val() or {}
+    stats = {
+        'total_applications': status_counts['total'],
+        'pending_review': status_counts['pending_review'],
+        'reviewed': status_counts['reviewed'],
+        'selected': status_counts['selected'],
+        'accepted': status_counts['accepted'],
+        'rejected': status_counts['rejected'],
+        'courses_needing_tas': len(courses)
+    }
     
     return render_template('staff/dashboard.html',
                          stats=stats,
                          recent_applications=recent_applications,
-                         courses=courses,
-                         recommendations=recommendations)
+                         courses=courses)
 
 @staff_bp.route('/applications')
 @login_required
@@ -69,15 +105,34 @@ def view_applications():
     for app_id, app in applications.items():
         applicant = db.child("users").child(app.get('applicant_id')).get().val()
         if applicant:
+            # Get the most advanced status from course_statuses
+            course_statuses = app.get('course_statuses', {}).values()
+            status_priority = {
+                'Accepted': 4,
+                'Rejected': 3,
+                'Selected': 2,
+                'Reviewed': 1,
+                'Submitted': 0
+            }
+            
+            # Determine the most advanced status
+            current_status = app.get('status', 'Submitted')
+            if course_statuses:
+                max_status = max(course_statuses, 
+                               key=lambda x: status_priority.get(x, -1))
+                if status_priority.get(max_status, -1) > status_priority.get(current_status, -1):
+                    current_status = max_status
+            
             app_data = {
                 'id': app_id,
                 **app,
+                'status': current_status,  # Use the determined status
                 'applicant_name': applicant.get('name'),
                 'applicant_email': applicant.get('email')
             }
             
             # Apply filters
-            if status_filter != 'all' and app.get('status') != status_filter:
+            if status_filter != 'all' and current_status != status_filter:
                 continue
             if department_filter and app.get('department') != department_filter:
                 continue
