@@ -11,16 +11,20 @@
             <!-- Course Selection -->
             <div class="mb-6">
                 <label class="block text-gray-700 text-sm font-bold mb-2">
-                    Select Course to Apply For
+                    Select Courses to Apply For (You can select multiple courses)
                 </label>
-                <select name="course_id" required class="w-full px-3 py-2 border rounded-lg">
-                    <option value="">Select a course...</option>
+                <div class="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border rounded-lg p-4">
                     {% for course_id, course in courses.items() %}
-                    <option value="{{ course_id }}">
-                        {{ course.course_code }} - {{ course.name }}
-                    </option>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" name="course_ids[]" value="{{ course_id }}"
+                               class="form-checkbox h-4 w-4 text-blue-600">
+                        <label class="text-sm">
+                            <span class="font-medium">{{ course.course_code }}</span> - {{ course.name }}
+                            <span class="text-gray-500">({{ course.department_name }})</span>
+                        </label>
+                    </div>
                     {% endfor %}
-                </select>
+                </div>
             </div>
 
             <!-- Previous Experience -->

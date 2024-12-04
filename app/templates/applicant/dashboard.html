@@ -6,108 +6,174 @@
 <div class="container mx-auto px-4 py-8">
     <div class="mb-8">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold">Your Applications</h1>
-            {% if available_courses %}
+            <h1 class="text-2xl font-bold">Your Application</h1>
+            {% if not application and available_courses %}
             <a href="{{ url_for('applicant.new_application') }}" 
                class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
-                Start New Application
+                Submit Application
             </a>
             {% endif %}
         </div>
 
+        {% if application %}
         <!-- Application Status Summary -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-gray-600">Total Applications</h3>
-                <p class="text-2xl font-bold">{{ applications|length }}</p>
+                <h3 class="font-semibold text-gray-600">Application Status</h3>
+                <p class="text-2xl font-bold">{{ application.status }}</p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-gray-600">Pending Review</h3>
-                <p class="text-2xl font-bold">{{ applications|selectattr('status', 'equalto', 'Submitted')|list|length }}</p>
+                <h3 class="font-semibold text-gray-600">Courses Applied</h3>
+                <p class="text-2xl font-bold">{{ application.course_details|length }}</p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-gray-600">Selected</h3>
-                <p class="text-2xl font-bold">{{ applications|selectattr('status', 'equalto', 'Selected')|list|length }}</p>
+                <h3 class="font-semibold text-gray-600">Selected Offers</h3>
+                <p class="text-2xl font-bold">{{ application.course_details|selectattr('status', 'equalto', 'Selected')|list|length }}</p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-gray-600">Accepted</h3>
-                <p class="text-2xl font-bold">{{ applications|selectattr('status', 'equalto', 'Accepted')|list|length }}</p>
+                <h3 class="font-semibold text-gray-600">Accepted Positions</h3>
+                <p class="text-2xl font-bold">{{ application.course_details|selectattr('status', 'equalto', 'Accepted')|list|length }}</p>
             </div>
         </div>
 
-        <!-- Applications List -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <table class="min-w-full leading-normal">
-                <thead>
-                    <tr>
-                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
-                            Course
-                        </th>
-                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
-                            Submission Date
-                        </th>
-                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
-                            Status
-                        </th>
-                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase">
-                            Actions
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for app in applications %}
-                    <tr>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            <p class="text-gray-900 font-semibold">{{ app.course_code }}</p>
-                            <p class="text-gray-600">{{ app.course_name }}</p>
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            {{ app.submission_date|datetime }}
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            <span class="inline-flex px-2 py-1 leading-none text-xs font-semibold rounded-full
-                                {% if app.status == 'Submitted' %}bg-blue-200 text-blue-800
-                                {% elif app.status == 'Selected' %}bg-yellow-200 text-yellow-800
-                                {% elif app.status == 'Accepted' %}bg-green-200 text-green-800
-                                {% elif app.status == 'Rejected' %}bg-red-200 text-red-800
-                                {% endif %}">
-                                {{ app.status }}
-                            </span>
-                        </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            <a href="{{ url_for('applicant.view_application', application_id=app.id) }}" 
-                               class="text-blue-600 hover:text-blue-900 mr-4">View</a>
-                            
-                            {% if app.status == 'Selected' %}
-                            <div class="inline-flex space-x-2">
-                                <form method="POST" 
-                                      action="{{ url_for('applicant.handle_offer', application_id=app.id, action='accept') }}"
-                                      class="inline">
-                                    <button type="submit" 
-                                            onclick="return confirm('Are you sure you want to accept this offer?')"
-                                            class="text-green-600 hover:text-green-900">Accept</button>
-                                </form>
-                                <form method="POST"
-                                      action="{{ url_for('applicant.handle_offer', application_id=app.id, action='reject') }}"
-                                      class="inline">
-                                    <button type="submit"
-                                            onclick="return confirm('Are you sure you want to reject this offer?')"
-                                            class="text-red-600 hover:text-red-900">Reject</button>
-                                </form>
-                            </div>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
-                            No applications found. Start a new application today!
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- Application Details -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-semibold">Application Details</h2>
+                        <p class="text-sm text-gray-600 mt-1">Submitted: {{ application.submission_date|datetime }}</p>
+                    </div>
+                    <a href="{{ url_for('applicant.view_application', application_id=application.id) }}" 
+                       class="text-blue-600 hover:text-blue-800">View Full Application</a>
+                </div>
+            </div>
+
+            <!-- Course Status Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Course
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Department
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for course in application.course_details %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">{{ course.course_code }}</p>
+                                    <p class="text-sm text-gray-500">{{ course.name }}</p>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <p class="text-sm text-gray-900">{{ course.department_name }}</p>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                    {% if course.status == 'Submitted' %}bg-blue-100 text-blue-800
+                                    {% elif course.status == 'Selected' %}bg-yellow-100 text-yellow-800
+                                    {% elif course.status == 'Accepted' %}bg-green-100 text-green-800
+                                    {% elif course.status == 'Rejected' %}bg-red-100 text-red-800
+                                    {% endif %}">
+                                    {{ course.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                {% if course.status == 'Selected' %}
+                                <div class="flex space-x-2">
+                                    <form method="POST" 
+                                          action="{{ url_for('applicant.handle_offer', application_id=application.id, course_id=course.id, action='accept') }}"
+                                          class="inline">
+                                        <button type="submit" 
+                                                onclick="return confirm('Are you sure you want to accept this offer?')"
+                                                class="text-green-600 hover:text-green-900">Accept</button>
+                                    </form>
+                                    <form method="POST"
+                                          action="{{ url_for('applicant.handle_offer', application_id=application.id, course_id=course.id, action='reject') }}"
+                                          class="inline">
+                                        <button type="submit"
+                                                onclick="return confirm('Are you sure you want to reject this offer?')"
+                                                class="text-red-600 hover:text-red-900">Reject</button>
+                                    </form>
+                                </div>
+                                {% else %}
+                                <a href="{{ url_for('applicant.view_course_status', application_id=application.id, course_id=course.id) }}"
+                                   class="text-blue-600 hover:text-blue-900">View Details</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
+
+        <!-- Application Timeline -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold mb-4">Application Timeline</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+                                <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium">Application Submitted</h3>
+                            <p class="text-gray-500">{{ application.submission_date|datetime }}</p>
+                        </div>
+                    </div>
+
+                    {% for status_change in application.status_history %}
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center">
+                                <span class="text-white text-sm">{{ loop.index + 1 }}</span>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium">{{ status_change.status }}</h3>
+                            <p class="text-gray-500">{{ status_change.date|datetime }}</p>
+                            {% if status_change.note %}
+                            <p class="text-sm text-gray-600 mt-1">{{ status_change.note }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- No Application State -->
+        <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+            <h2 class="text-xl font-semibold mb-4">No Active Application</h2>
+            <p class="text-gray-600 mb-6">You haven't submitted a TA application yet. Start your application process today!</p>
+            {% if available_courses %}
+            <a href="{{ url_for('applicant.new_application') }}"
+               class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                Submit Application
+            </a>
+            {% else %}
+            <p class="text-gray-500">No courses are currently available for TA applications.</p>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

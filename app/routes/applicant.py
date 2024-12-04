@@ -14,38 +14,41 @@ applicant_bp = Blueprint('applicant', __name__, url_prefix='/applicant')
 def dashboard():
     _, _, db, _ = get_firebase()
     
-    # Get applicant's applications with course details
-    applications = db.child("applications")\
+    # Get applicant's application
+    application = db.child("applications")\
         .order_by_child("applicant_id")\
         .equal_to(session['user_id'])\
-        .get()
+        .get().val()
     
-    formatted_applications = []
-    if applications.each():
-        for app in applications.each():
-            app_data = app.val()
-            app_data['id'] = app.key()
-            
-            # Get course details for this application
-            if 'course_id' in app_data:
-                course = db.child("courses").child(app_data['course_id']).get().val()
-                if course:
-                    app_data['course_name'] = course.get('name')
-                    app_data['course_code'] = course.get('course_code')
-            formatted_applications.append(app_data)
-    
-    # Get available courses for new applications
-    # Only show courses that the applicant hasn't already applied to
+    if application:
+        # Convert to list and get the first (and only) application
+        application = list(application.items())[0]
+        app_id, app_data = application
+        app_data['id'] = app_id
+        
+        # Get course details for all selected courses
+        course_details = []
+        for course_id in app_data.get('course_ids', []):
+            course = db.child("courses").child(course_id).get().val()
+            if course:
+                course_details.append({
+                    'id': course_id,
+                    'name': course.get('name'),
+                    'course_code': course.get('course_code'),
+                    'status': app_data.get('course_statuses', {}).get(course_id, 'Pending')
+                })
+        app_data['course_details'] = course_details
+        
+    # Get available courses for new application
     all_courses = db.child("courses").get().val() or {}
-    applied_course_ids = [app.get('course_id') for app in formatted_applications]
     available_courses = {
         k: v for k, v in all_courses.items() 
-        if k not in applied_course_ids and not v.get('ta_assigned', False)
+        if not v.get('ta_assigned', False)
     }
     
     return render_template('applicant/dashboard.html',
-                         applications=formatted_applications,
-                         available_courses=available_courses)
+                         application=app_data if application else None,
+                         available_courses=available_courses if not application else {})
 
 @applicant_bp.route('/application/new', methods=['GET', 'POST'])
 @login_required
@@ -53,24 +56,22 @@ def dashboard():
 def new_application():
     _, _, db, storage = get_firebase()
     
+    # Check if applicant already has an application
+    existing_application = db.child("applications")\
+        .order_by_child("applicant_id")\
+        .equal_to(session['user_id'])\
+        .get().val()
+    
+    if existing_application:
+        flash('You already have an active application.', 'error')
+        return redirect(url_for('applicant.dashboard'))
+    
     if request.method == 'POST':
         try:
-            course_id = request.form.get('course_id')
-            if not course_id:
-                flash('Please select a course to apply for.', 'error')
+            course_ids = request.form.getlist('course_ids[]')
+            if not course_ids:
+                flash('Please select at least one course to apply for.', 'error')
                 return redirect(url_for('applicant.new_application'))
-            
-            # Check if already applied to this course
-            existing_application = db.child("applications")\
-                .order_by_child("applicant_id")\
-                .equal_to(session['user_id'])\
-                .get().val()
-            
-            if existing_application:
-                for app in existing_application.values():
-                    if app.get('course_id') == course_id:
-                        flash('You have already applied for this course.', 'error')
-                        return redirect(url_for('applicant.dashboard'))
             
             # Handle CV upload
             cv_url = None
@@ -80,10 +81,14 @@ def new_application():
                 storage.child(filename).put(cv_file)
                 cv_url = storage.child(filename).get_url(None)
             
+            # Initialize course statuses
+            course_statuses = {course_id: 'Submitted' for course_id in course_ids}
+            
             # Prepare application data
             application_data = {
                 "applicant_id": session['user_id'],
-                "course_id": course_id,
+                "course_ids": course_ids,
+                "course_statuses": course_statuses,
                 "status": "Submitted",
                 "submission_date": datetime.now().isoformat(),
                 "previous_experience": request.form.get('previous_experience') == 'yes',
@@ -111,18 +116,11 @@ def new_application():
             flash(f'Error submitting application: {str(e)}', 'error')
             return redirect(url_for('applicant.new_application'))
     
-    # GET request - show application form
-    # Only show courses that the applicant hasn't already applied to
+    # Get available courses
     all_courses = db.child("courses").get().val() or {}
-    existing_applications = db.child("applications")\
-        .order_by_child("applicant_id")\
-        .equal_to(session['user_id'])\
-        .get().val() or {}
-    
-    applied_course_ids = [app.get('course_id') for app in existing_applications.values()]
     available_courses = {
         k: v for k, v in all_courses.items() 
-        if k not in applied_course_ids and not v.get('ta_assigned', False)
+        if not v.get('ta_assigned', False)
     }
     
     return render_template('applicant/new_application.html', 
