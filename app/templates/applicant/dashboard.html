@@ -8,8 +8,8 @@
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold">Your Application</h1>
             {% if not application and available_courses %}
-            <a href="{{ url_for('applicant.new_application') }}" 
-               class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+            <a href="{{ url_for('applicant.new_application') }}"
+                class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
                 Submit Application
             </a>
             {% endif %}
@@ -28,11 +28,13 @@
             </div>
             <div class="bg-white p-4 rounded-lg shadow">
                 <h3 class="font-semibold text-gray-600">Selected Offers</h3>
-                <p class="text-2xl font-bold">{{ application.course_details|selectattr('status', 'equalto', 'Selected')|list|length }}</p>
+                <p class="text-2xl font-bold">{{ application.course_details|selectattr('status', 'equalto',
+                    'Selected')|list|length }}</p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow">
                 <h3 class="font-semibold text-gray-600">Accepted Positions</h3>
-                <p class="text-2xl font-bold">{{ application.course_details|selectattr('status', 'equalto', 'Accepted')|list|length }}</p>
+                <p class="text-2xl font-bold">{{ application.course_details|selectattr('status', 'equalto',
+                    'Accepted')|list|length }}</p>
             </div>
         </div>
 
@@ -44,8 +46,8 @@
                         <h2 class="text-xl font-semibold">Application Details</h2>
                         <p class="text-sm text-gray-600 mt-1">Submitted: {{ application.submission_date|datetime }}</p>
                     </div>
-                    <a href="{{ url_for('applicant.view_application', application_id=application.id) }}" 
-                       class="text-blue-600 hover:text-blue-800">View Full Application</a>
+                    <a href="{{ url_for('applicant.view_application', application_id=application.id) }}"
+                        class="text-blue-600 hover:text-blue-800">View Full Application</a>
                 </div>
             </div>
 
@@ -80,38 +82,38 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <p class="text-sm text-gray-900">{{ course.department_name }}</p>
                             </td>
+                            <!-- Replace the status display section in dashboard.html -->
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
-                                    {% if course.status == 'Submitted' %}bg-blue-100 text-blue-800
-                                    {% elif course.status == 'Selected' %}bg-yellow-100 text-yellow-800
-                                    {% elif course.status == 'Accepted' %}bg-green-100 text-green-800
-                                    {% elif course.status == 'Rejected' %}bg-red-100 text-red-800
-                                    {% endif %}">
+                                <span class="inline-flex px-2 py-1 leading-none text-xs font-semibold rounded-full
+                            {% if course.status == 'Submitted' %}bg-blue-200 text-blue-800
+                            {% elif course.status == 'Selected' %}bg-yellow-200 text-yellow-800
+                            {% elif course.status == 'Accepted' %}bg-green-200 text-green-800
+                            {% elif course.status == 'Rejected' %}bg-red-200 text-red-800
+                            {% endif %}">
                                     {{ course.status }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                {% if course.status == 'Selected' %}
-                                <div class="flex space-x-2">
-                                    <form method="POST" 
-                                          action="{{ url_for('applicant.handle_offer', application_id=application.id, course_id=course.id, action='accept') }}"
-                                          class="inline">
-                                        <button type="submit" 
-                                                onclick="return confirm('Are you sure you want to accept this offer?')"
-                                                class="text-green-600 hover:text-green-900">Accept</button>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex space-x-4">
+                                    {% if course.status == 'Selected' %}
+                                    <form method="POST"
+                                        action="{{ url_for('applicant.handle_offer', application_id=application.id, course_id=course.id, action='accept') }}"
+                                        class="inline">
+                                        <button type="submit"
+                                            onclick="return confirm('Are you sure you want to accept this offer for {{ course.code }}?')"
+                                            class="text-green-600 hover:text-green-900">Accept</button>
                                     </form>
                                     <form method="POST"
-                                          action="{{ url_for('applicant.handle_offer', application_id=application.id, course_id=course.id, action='reject') }}"
-                                          class="inline">
+                                        action="{{ url_for('applicant.handle_offer', application_id=application.id, course_id=course.id, action='reject') }}"
+                                        class="inline">
                                         <button type="submit"
-                                                onclick="return confirm('Are you sure you want to reject this offer?')"
-                                                class="text-red-600 hover:text-red-900">Reject</button>
+                                            onclick="return confirm('Are you sure you want to reject this offer for {{ course.code }}?')"
+                                            class="text-red-600 hover:text-red-900">Reject</button>
                                     </form>
+                                    {% endif %}
+                                    <a href="{{ url_for('applicant.view_application', application_id=application.id) }}"
+                                        class="text-blue-600 hover:text-blue-900">View Details</a>
                                 </div>
-                                {% else %}
-                                <a href="{{ url_for('applicant.view_application', application_id=application.id) }}"
-                                    class="text-blue-600 hover:text-blue-900">View Details</a>
-                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -129,7 +131,9 @@
                         <div class="flex-shrink-0">
                             <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
                                 <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd" />
                                 </svg>
                             </div>
                         </div>
@@ -163,10 +167,11 @@
         <!-- No Application State -->
         <div class="bg-white rounded-lg shadow-lg p-6 text-center">
             <h2 class="text-xl font-semibold mb-4">No Active Application</h2>
-            <p class="text-gray-600 mb-6">You haven't submitted a TA application yet. Start your application process today!</p>
+            <p class="text-gray-600 mb-6">You haven't submitted a TA application yet. Start your application process
+                today!</p>
             {% if available_courses %}
             <a href="{{ url_for('applicant.new_application') }}"
-               class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
                 Submit Application
             </a>
             {% else %}

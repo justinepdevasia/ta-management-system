@@ -31,11 +31,13 @@ def dashboard():
         for course_id in app_data.get('course_ids', []):
             course = db.child("courses").child(course_id).get().val()
             if course:
+                status = app_data.get('course_statuses', {}).get(course_id, 'Submitted')
                 course_details.append({
                     'id': course_id,
                     'name': course.get('name'),
-                    'course_code': course.get('course_code'),
-                    'status': app_data.get('course_statuses', {}).get(course_id, 'Pending')
+                    'code': course.get('course_code'),
+                    'department_name': course.get('department_name'),
+                    'status': status
                 })
         app_data['course_details'] = course_details
         
@@ -189,10 +191,10 @@ def view_application(application_id):
     return render_template('applicant/view_application.html',
                          application=application)
 
-@applicant_bp.route('/application/<application_id>/handle-offer/<action>', methods=['POST'])
+@applicant_bp.route('/application/<application_id>/course/<course_id>/handle-offer/<action>', methods=['POST'])
 @login_required
 @role_required(['applicant'])
-def handle_offer(application_id, action):
+def handle_offer(application_id, course_id, action):
     _, _, db, _ = get_firebase()
     
     if action not in ['accept', 'reject']:
@@ -207,35 +209,60 @@ def handle_offer(application_id, action):
             flash('Application not found.', 'error')
             return redirect(url_for('applicant.dashboard'))
         
-        if application['status'] != 'Selected':
-            flash('This application is not in selected status.', 'error')
+        # Get current course status
+        course_statuses = application.get('course_statuses', {})
+        if course_id not in course_statuses or course_statuses[course_id] != 'Selected':
+            flash('This course offer is not in selected status.', 'error')
             return redirect(url_for('applicant.view_application', application_id=application_id))
         
-        # Update application status based on action
+        # Update course status based on action
         new_status = 'Accepted' if action == 'accept' else 'Rejected'
+        course_statuses[course_id] = new_status
         
+        # Update response dates
+        course_response_dates = application.get('course_response_dates', {})
+        course_response_dates[course_id] = datetime.now().isoformat()
+        
+        # Update application
         db.child("applications").child(application_id).update({
-            "status": new_status,
-            "response_date": datetime.now().isoformat(),
+            "course_statuses": course_statuses,
+            "course_response_dates": course_response_dates,
             "updated_at": datetime.now().isoformat()
         })
         
-        # If accepted, update course TA assignment status
+        # If accepted, update course TA assignment
         if action == 'accept':
-            db.child("courses").child(application['course_id']).update({
-                "ta_assigned": True
+            # Update course TA assignment status
+            db.child("courses").child(course_id).update({
+                "ta_assigned": True,
+                "updated_at": datetime.now().isoformat()
             })
             
-            # Create TA assignment record
+            # Update or create TA assignment record
             assignment_data = {
-                "course_id": application['course_id'],
+                "course_id": course_id,
                 "ta_id": session['user_id'],
                 "status": "Active",
                 "assigned_at": datetime.now().isoformat()
             }
-            db.child("ta_assignments").push(assignment_data)
+            
+            # Find existing assignment if any
+            assignments = db.child("ta_assignments")\
+                .order_by_child("course_id")\
+                .equal_to(course_id)\
+                .get().val() or {}
+                
+            assignment_exists = False
+            for assignment_id, assignment in assignments.items():
+                if assignment['ta_id'] == session['user_id']:
+                    db.child("ta_assignments").child(assignment_id).update(assignment_data)
+                    assignment_exists = True
+                    break
+                    
+            if not assignment_exists:
+                db.child("ta_assignments").push(assignment_data)
         
-        flash(f'Application {new_status.lower()} successfully!', 'success')
+        flash(f'Course offer {new_status.lower()} successfully!', 'success')
         
     except Exception as e:
         flash(f'Error processing response: {str(e)}', 'error')
