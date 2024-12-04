@@ -354,7 +354,7 @@ def course_recommendations(course_id):
             .equal_to(course_id)\
             .get().val() or {}
             
-        # Get recommendations for this course
+        # Get recommendations
         recommendations = db.child("recommendations")\
             .order_by_child("course_id")\
             .equal_to(course_id)\
@@ -373,7 +373,11 @@ def course_recommendations(course_id):
                     # Skip if already assigned
                     if any(a.get('ta_id') == application['applicant_id'] for a in current_assignments.values()):
                         continue
-                        
+                    
+                    # Calculate average score
+                    evaluation_scores = rec.get('evaluation_scores', {})
+                    average_score = sum(evaluation_scores.values()) / len(evaluation_scores) if evaluation_scores else 0
+                    
                     enriched_recommendations.append({
                         'id': rec_id,
                         **rec,
@@ -382,9 +386,13 @@ def course_recommendations(course_id):
                         'application_id': rec['application_id'],
                         'application_status': course_status,
                         'gpa': application.get('gpa'),
-                        'evaluation_scores': rec.get('evaluation_scores', {}),
-                        'reviewer_name': rec.get('reviewer_name', 'Unknown Reviewer')
+                        'evaluation_scores': evaluation_scores,
+                        'reviewer_name': rec.get('reviewer_name', 'Unknown Reviewer'),
+                        'average_score': average_score
                     })
+        
+        # Sort recommendations by average score
+        enriched_recommendations.sort(key=lambda x: x['average_score'], reverse=True)
         
         return render_template('committee/course_recommendations.html',
                              course=course,
