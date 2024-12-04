@@ -11,27 +11,27 @@
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-sm font-medium text-gray-500">Total Selections</h3>
             <p class="mt-2 text-2xl font-bold text-gray-900">
-                {{ applications|selectattr('status', 'equalto', 'Selected')|list|length +
-                   applications|selectattr('status', 'equalto', 'Accepted')|list|length +
-                   applications|selectattr('status', 'equalto', 'Rejected')|list|length }}
+                {{ applications|sum(attribute='courses|selectattr("status", "equalto", "Selected")|list|length') +
+                   applications|sum(attribute='courses|selectattr("status", "equalto", "Accepted")|list|length') +
+                   applications|sum(attribute='courses|selectattr("status", "equalto", "Rejected")|list|length') }}
             </p>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-sm font-medium text-gray-500">Pending Response</h3>
             <p class="mt-2 text-2xl font-bold text-yellow-600">
-                {{ applications|selectattr('status', 'equalto', 'Selected')|list|length }}
+                {{ applications|sum(attribute='courses|selectattr("status", "equalto", "Selected")|list|length') }}
             </p>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-sm font-medium text-gray-500">Accepted</h3>
             <p class="mt-2 text-2xl font-bold text-green-600">
-                {{ applications|selectattr('status', 'equalto', 'Accepted')|list|length }}
+                {{ applications|sum(attribute='courses|selectattr("status", "equalto", "Accepted")|list|length') }}
             </p>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-sm font-medium text-gray-500">Rejected</h3>
             <p class="mt-2 text-2xl font-bold text-red-600">
-                {{ applications|selectattr('status', 'equalto', 'Rejected')|list|length }}
+                {{ applications|sum(attribute='courses|selectattr("status", "equalto", "Rejected")|list|length') }}
             </p>
         </div>
     </div>
@@ -75,61 +75,63 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for app in applications %}
-                    <tr class="decision-row" data-status="{{ app.status }}">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center">
-                                <div>
-                                    <div class="text-sm font-medium text-gray-900">{{ app.applicant_name }}</div>
-                                    <div class="text-sm text-gray-500">{{ app.applicant_email }}</div>
+                        {% for course in app.courses %}
+                        <tr class="decision-row" data-status="{{ course.status }}">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ app.applicant_name }}</div>
+                                        <div class="text-sm text-gray-500">{{ app.applicant_email }}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">{{ app.course_code }}</div>
-                            <div class="text-sm text-gray-500">{{ app.course_name }}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-500">
-                                <div>Selected: {{ app.selected_date|datetime }}</div>
-                                {% if app.response_due_date %}
-                                <div class="mt-1">
-                                    Due: {{ app.response_due_date|datetime }}
-                                    {% if app.status == 'Selected' %}
-                                        {% set days_left = ((app.response_due_date|datetime_obj - now).days) %}
-                                        <span class="ml-2 px-2 py-0.5 rounded-full text-xs
-                                            {% if days_left <= 1 %}bg-red-100 text-red-800
-                                            {% elif days_left <= 3 %}bg-yellow-100 text-yellow-800
-                                            {% else %}bg-green-100 text-green-800{% endif %}">
-                                            {{ days_left }} day(s) left
-                                        </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900">{{ course.code }}</div>
+                                <div class="text-sm text-gray-500">{{ course.name }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-500">
+                                    <div>Selected: {{ course.selected_date|datetime }}</div>
+                                    {% if course.response_due_date %}
+                                    <div class="mt-1">
+                                        Due: {{ course.response_due_date|datetime }}
+                                        {% if course.status == 'Selected' %}
+                                            {% set days_left = ((course.response_due_date|datetime_obj - now).days) %}
+                                            <span class="ml-2 px-2 py-0.5 rounded-full text-xs
+                                                {% if days_left <= 1 %}bg-red-100 text-red-800
+                                                {% elif days_left <= 3 %}bg-yellow-100 text-yellow-800
+                                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                                {{ days_left }} day(s) left
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    {% if course.response_date %}
+                                    <div class="mt-1">
+                                        Responded: {{ course.response_date|datetime }}
+                                    </div>
                                     {% endif %}
                                 </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                    {% if course.status == 'Selected' %}bg-yellow-100 text-yellow-800
+                                    {% elif course.status == 'Accepted' %}bg-green-100 text-green-800
+                                    {% elif course.status == 'Rejected' %}bg-red-100 text-red-800{% endif %}">
+                                    {{ course.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm">
+                                {% if course.status == 'Rejected' %}
+                                <a href="{{ url_for('committee.course_recommendations', course_id=course.id) }}"
+                                   class="text-blue-600 hover:text-blue-900">Select New TA</a>
+                                {% else %}
+                                <button onclick="viewDetails('{{ app.id }}', '{{ course.id }}')"
+                                        class="text-blue-600 hover:text-blue-900">View Details</button>
                                 {% endif %}
-                                {% if app.response_date %}
-                                <div class="mt-1">
-                                    Responded: {{ app.response_date|datetime }}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
-                                {% if app.status == 'Selected' %}bg-yellow-100 text-yellow-800
-                                {% elif app.status == 'Accepted' %}bg-green-100 text-green-800
-                                {% elif app.status == 'Rejected' %}bg-red-100 text-red-800{% endif %}">
-                                {{ app.status }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-sm">
-                            {% if app.status == 'Rejected' %}
-                            <a href="{{ url_for('committee.course_recommendations', course_id=app.course_id) }}"
-                               class="text-blue-600 hover:text-blue-900">Select New TA</a>
-                            {% else %}
-                            <button onclick="viewDetails('{{ app.id }}')"
-                                    class="text-blue-600 hover:text-blue-900">View Details</button>
-                            {% endif %}
-                        </td>
-                    </tr>
+                            </td>
+                        </tr>
+                        {% endfor %}
                     {% else %}
                     <tr>
                         <td colspan="5" class="px-6 py-4 text-center text-gray-500">
@@ -175,14 +177,14 @@ function filterTable() {
     });
 }
 
-function viewDetails(applicationId) {
+function viewDetails(applicationId, courseId) {
     const modal = document.getElementById('decisionModal');
     const content = document.getElementById('decisionContent');
     modal.classList.remove('hidden');
     content.innerHTML = 'Loading details...';
     
     // Fetch decision details
-    fetch(`/committee/api/application/${applicationId}/decision`)
+    fetch(`/committee/api/application/${applicationId}/course/${courseId}/decision`)
         .then(response => response.json())
         .then(data => {
             content.innerHTML = `

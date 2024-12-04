@@ -111,27 +111,32 @@ def select_ta(course_id, application_id):
             flash('Application not found.', 'error')
             return redirect(url_for('committee.course_recommendations', course_id=course_id))
             
-        # Get all applications from this applicant
-        applicant_applications = db.child("applications")\
-            .order_by_child("applicant_id")\
-            .equal_to(application['applicant_id'])\
-            .get().val() or {}
-            
-        # Update status of all other applications to "Unavailable"
-        for app_id, app_data in applicant_applications.items():
-            if app_id != application_id and app_data['status'] == 'Submitted':
-                db.child("applications").child(app_id).update({
-                    "status": "Unavailable",
-                    "updated_at": datetime.now().isoformat(),
-                    "unavailable_reason": "Selected for another course"
-                })
+        # Update course status
+        course_statuses = application.get('course_statuses', {})
+        course_selected_dates = application.get('course_selected_dates', {})
+        course_response_due_dates = application.get('course_response_due_dates', {})
+        
+        course_statuses[course_id] = 'Selected'
+        course_selected_dates[course_id] = datetime.now().isoformat()
+        course_response_due_dates[course_id] = (datetime.now() + timedelta(days=7)).isoformat()
+        
+        # Update all other applications for this course to 'Unavailable'
+        other_applications = db.child("applications").get().val() or {}
+        for other_app_id, other_app in other_applications.items():
+            if other_app_id != application_id and course_id in other_app.get('course_ids', []):
+                other_statuses = other_app.get('course_statuses', {})
+                if other_statuses.get(course_id) == 'Submitted':
+                    other_statuses[course_id] = 'Unavailable'
+                    db.child("applications").child(other_app_id).update({
+                        "course_statuses": other_statuses,
+                        "updated_at": datetime.now().isoformat()
+                    })
 
-        # Update selected application status
+        # Update application
         db.child("applications").child(application_id).update({
-            "status": "Selected",
-            "selected_by": session['user_id'],
-            "selected_date": datetime.now().isoformat(),
-            "response_due_date": (datetime.now() + timedelta(days=7)).isoformat(),
+            "course_statuses": course_statuses,
+            "course_selected_dates": course_selected_dates,
+            "course_response_due_dates": course_response_due_dates,
             "updated_at": datetime.now().isoformat()
         })
         
@@ -169,17 +174,33 @@ def view_decisions():
     enriched_applications = []
     for app_id, app in applications.items():
         applicant = db.child("users").child(app['applicant_id']).get().val()
-        course = db.child("courses").child(app['course_id']).get().val()
         
-        if applicant and course:
-            enriched_applications.append({
-                'id': app_id,
-                **app,
-                'applicant_name': applicant.get('name'),
-                'applicant_email': applicant.get('email'),
-                'course_code': course.get('course_code'),
-                'course_name': course.get('name')
-            })
+        if applicant:
+            # Get courses data
+            courses_data = []
+            for course_id in app.get('course_ids', []):
+                course = db.child("courses").child(course_id).get().val()
+                if course:
+                    status = app.get('course_statuses', {}).get(course_id, 'Pending')
+                    if status in ['Selected', 'Accepted', 'Rejected']:
+                        courses_data.append({
+                            'id': course_id,
+                            'code': course.get('course_code'),
+                            'name': course.get('name'),
+                            'status': status,
+                            'selected_date': app.get('course_selected_dates', {}).get(course_id),
+                            'response_date': app.get('course_response_dates', {}).get(course_id),
+                            'response_due_date': app.get('course_response_due_dates', {}).get(course_id)
+                        })
+            
+            if courses_data:  # Only include if there are relevant course decisions
+                enriched_applications.append({
+                    'id': app_id,
+                    'applicant_name': applicant.get('name'),
+                    'applicant_email': applicant.get('email'),
+                    'submission_date': app.get('submission_date'),
+                    'courses': courses_data
+                })
     
     return render_template('committee/decisions.html',
                          applications=enriched_applications)
@@ -310,6 +331,7 @@ def api_get_application(application_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @committee_bp.route('/course/<course_id>/recommendations')
 @login_required
 @role_required(['committee'])
@@ -332,33 +354,23 @@ def course_recommendations(course_id):
             .equal_to(course_id)\
             .get().val() or {}
             
-        # Get recommendations
-        try:
-            recommendations = db.child("recommendations")\
-                .order_by_child("course_id")\
-                .equal_to(course_id)\
-                .get().val() or {}
-        except:
-            all_recommendations = db.child("recommendations").get().val() or {}
-            recommendations = {
-                k: v for k, v in all_recommendations.items()
-                if v.get('course_id') == course_id
-            }
+        # Get recommendations for this course
+        recommendations = db.child("recommendations")\
+            .order_by_child("course_id")\
+            .equal_to(course_id)\
+            .get().val() or {}
             
         # Enrich recommendations with applicant data
         enriched_recommendations = []
         for rec_id, rec in recommendations.items():
-            # Make sure we have the application_id in the recommendation
-            application_id = rec.get('application_id')
-            if not application_id:
-                continue
-                
-            application = db.child("applications").child(application_id).get().val()
-            if application:
-                applicant = db.child("users").child(application['applicant_id']).get().val() if application else None
-                
+            application = db.child("applications").child(rec['application_id']).get().val()
+            
+            if application and course_id in application.get('course_ids', []):
+                applicant = db.child("users").child(application['applicant_id']).get().val()
                 if applicant:
-                    # Skip if applicant is already assigned to this course
+                    course_status = application.get('course_statuses', {}).get(course_id)
+                    
+                    # Skip if already assigned
                     if any(a.get('ta_id') == application['applicant_id'] for a in current_assignments.values()):
                         continue
                         
@@ -367,19 +379,12 @@ def course_recommendations(course_id):
                         **rec,
                         'applicant_name': applicant.get('name'),
                         'applicant_email': applicant.get('email'),
-                        'application_id': application_id,  # Use the original application_id from recommendation
-                        'application_status': application.get('status'),
+                        'application_id': rec['application_id'],
+                        'application_status': course_status,
                         'gpa': application.get('gpa'),
                         'evaluation_scores': rec.get('evaluation_scores', {}),
                         'reviewer_name': rec.get('reviewer_name', 'Unknown Reviewer')
                     })
-        
-        # Sort recommendations by average evaluation score
-        for rec in enriched_recommendations:
-            scores = rec.get('evaluation_scores', {})
-            rec['average_score'] = sum(scores.values()) / len(scores) if scores else 0
-            
-        enriched_recommendations.sort(key=lambda x: x['average_score'], reverse=True)
         
         return render_template('committee/course_recommendations.html',
                              course=course,
